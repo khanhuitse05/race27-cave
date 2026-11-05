@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { POLL } from '../src/config.js';
 
 // Khi dev, Vite chiếm PORT nên server ở 8787 để khớp proxy trong vite.config.js.
 const PORT = process.argv.includes('--dev') ? 8787 : Number(process.env.PORT) || 8787;
@@ -31,7 +30,6 @@ const MIME = {
 /** @type {Map<number, any>} */
 const players = new Map();
 const chatLog = [];
-const votes = new Map(); // playerId -> option index
 let nextId = 1;
 
 function json(res, code, body) {
@@ -76,12 +74,6 @@ function pushChat(entry) {
   broadcast({ t: 'chat', ...entry });
 }
 
-function pollCounts() {
-  const counts = POLL.options.map(() => 0);
-  for (const v of votes.values()) counts[v]++;
-  return counts;
-}
-
 function cleanName(raw) {
   const name = String(raw ?? '').replace(/\s+/g, ' ').trim().slice(0, 30);
   return name || 'Cơ thủ Ẩn danh';
@@ -97,7 +89,6 @@ function publicInfo(p) {
     id: p.id,
     name: p.name,
     number: p.number,
-    title: p.title,
     cueStyle: p.cueStyle,
     x: p.x,
     z: p.z,
@@ -137,8 +128,7 @@ wss.on('connection', (ws) => {
         ws,
         name: cleanName(msg.name),
         number: cleanNumber(msg.number),
-        title: String(msg.title || 'Cơ thủ'),
-        cueStyle: String(msg.cueStyle || 'carbon'),
+        cueStyle: String(msg.cueStyle || 'ngocmy'),
         x: spawn.x,
         z: spawn.z,
         ry: 0,
@@ -155,11 +145,10 @@ wss.on('connection', (ws) => {
         id: me.id,
         players: [...players.values()].map(publicInfo),
         chat: chatLog,
-        poll: { counts: pollCounts(), mine: null },
       });
 
       broadcast({ t: 'join', p: publicInfo(me) }, me.id);
-      pushChat({ sys: true, text: `🎱 Cơ thủ ${me.name} (${me.title}) vừa bước vào đấu trường Rasson!` });
+      pushChat({ sys: true, text: `🎱 Cơ thủ ${me.name} vừa bước vào đấu trường Race 27 Gia Đình!` });
       return;
     }
 
@@ -220,15 +209,6 @@ wss.on('connection', (ws) => {
       case 'celebrate':
         broadcast({ t: 'celebrate', id: me.id });
         break;
-      case 'vote': {
-        const v = msg.v | 0;
-        if (v < 0 || v >= POLL.options.length || votes.get(me.id) === v) return;
-        votes.set(me.id, v);
-        send(ws, { t: 'myvote', v });
-        broadcast({ t: 'poll', counts: pollCounts() });
-        pushChat({ sys: true, text: `${me.name} 🗳️ Bình chọn: ${POLL.options[v]}` });
-        break;
-      }
     }
   });
 

@@ -285,6 +285,17 @@ html, body {
   border-color: var(--primary-glow);
 }
 
+.score-hud-btn {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(245, 158, 11, 0.25));
+  border-color: var(--gold);
+  color: #fef08a;
+  font-weight: 700;
+}
+.score-hud-btn:hover {
+  background: rgba(212, 175, 55, 0.45);
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.5);
+}
+
 .room-info {
   position: absolute;
   top: max(12px, env(safe-area-inset-top));

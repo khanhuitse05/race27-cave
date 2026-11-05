@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { BRAND, CUE_STYLES, PLAYER_TITLES, QUIZ } from './config.js';
+import { BRAND, CUE_STYLES, QUIZ } from './config.js';
 import { createHangingCueRack } from './avatar.js';
 import { rockGeometry, rockMaterial, rng, textCanvas } from './scenery.js';
-import { drawPoolBallIcon, el, loadProfile, saveProfile } from './util.js';
+import { el, loadProfile, saveProfile } from './util.js';
 
 function buildLandingScene(scene) {
   scene.background = new THREE.Color('#0c0f14');
@@ -184,68 +184,48 @@ function buildLandingScene(scene) {
 }
 
 /**
- * Hộp thoại tạo Profile cơ thủ (Tên, Danh hiệu, Số bi may mắn, Kiểu gậy cơ)
+ * Hộp thoại tạo Profile cơ thủ (Tên, Gậy cơ)
+ * Title: "Race 27 Gia Đình"
+ * Bi số may mắn sau lưng random tự động, ẩn trên giao diện
  */
 function nameDialog(root, onSubmit) {
   const saved = loadProfile();
-  const iconCanvas = el('canvas', { width: 96, height: 96, style: 'width:48px;height:48px' });
-  const nameInput = el('input', { maxLength: 30, placeholder: 'Nhập tên hoặc biệt danh cơ thủ…', autocomplete: 'off', value: saved.name || '' });
-  const numInput = el('input', { className: 'num-input', inputMode: 'numeric', maxLength: 2, placeholder: '8', value: saved.number ?? 8 });
+  const nameInput = el('input', {
+    maxLength: 30,
+    placeholder: 'Nhập tên hoặc biệt danh cơ thủ…',
+    autocomplete: 'off',
+    value: saved.name || '',
+  });
 
-  // Chọn danh hiệu cơ thủ
-  const titleSelect = el(
-    'select',
-    { className: 'select-input' },
-    ...PLAYER_TITLES.map((t) => el('option', { value: t, selected: t === saved.title }, t)),
-  );
-
-  // Chọn kiểu gậy cơ thi đấu
+  // Chọn kiểu gậy cơ thi đấu (Mặc định: Ngọc Mỹ)
   const cueSelect = el(
     'select',
     { className: 'select-input' },
-    ...CUE_STYLES.map((c) => el('option', { value: c.id, selected: c.id === saved.cueStyle }, c.name)),
+    ...CUE_STYLES.map((c) => el('option', { value: c.id, selected: c.id === (saved.cueStyle || 'ngocmy') }, c.name)),
   );
 
   const counter = el('div', { className: 'counter' });
   const submit = el('button', { className: 'btn btn-primary', type: 'submit' }, 'Tiếp tục vào Đấu Trường 🎱');
   const cancel = el('button', { className: 'btn btn-ghost', type: 'button' }, 'Huỷ');
 
-  function parseBallNum(val) {
-    const n = Number.parseInt(val, 10);
-    return n >= 1 && n <= 15 ? n : 8;
-  }
-
   function refresh() {
     counter.textContent = `${nameInput.value.length}/30 ký tự`;
     submit.disabled = !nameInput.value.trim();
-    numInput.value = numInput.value.replace(/\D/g, '');
-    const num = parseBallNum(numInput.value);
-    drawPoolBallIcon(iconCanvas, num);
   }
 
   nameInput.addEventListener('input', refresh);
-  numInput.addEventListener('input', refresh);
 
   const form = el(
     'form',
     { className: 'modal' },
     el('div', { className: 'eyebrow' }, 'HỒ SƠ CƠ THỦ THI ĐẤU'),
-    el('h2', {}, 'Gia Nhập Rasson Billiards'),
+    el('h2', {}, 'Race 27 Gia Đình'),
     el('label', {}, 'Tên hiển thị của cơ thủ'),
     nameInput,
     counter,
-    el('label', { style: 'margin-top:10px' }, 'Danh hiệu cơ thủ'),
-    titleSelect,
-    el('label', { style: 'margin-top:10px' }, 'Gậy cơ thi đấu'),
+    el('label', { style: 'margin-top:14px' }, 'Gậy cơ thi đấu'),
     cueSelect,
-    el(
-      'div',
-      { className: 'row', style: 'margin-top:12px' },
-      el('div', { className: 'grow' }, el('label', { style: 'margin:0' }, 'Bi số may mắn sau lưng'), el('div', { className: 'hint' }, 'Từ 1 đến 15 (8: Bi đen, 9: Sọc vàng)')),
-      iconCanvas,
-      numInput,
-    ),
-    el('div', { className: 'actions' }, cancel, submit),
+    el('div', { className: 'actions', style: 'margin-top:22px' }, cancel, submit),
   );
 
   const backdrop = el('div', { className: 'modal-backdrop' }, form);
@@ -253,11 +233,13 @@ function nameDialog(root, onSubmit) {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (!nameInput.value.trim()) return;
+
+    // Bi số may mắn sau lưng ngẫu nhiên từ 1 đến 15
+    const randomBall = Math.floor(Math.random() * 15) + 1;
     const profile = {
       name: nameInput.value.trim().slice(0, 30),
-      number: parseBallNum(numInput.value),
-      title: titleSelect.value,
-      cueStyle: cueSelect.value,
+      number: randomBall,
+      cueStyle: cueSelect.value || 'ngocmy',
     };
     saveProfile(profile);
     backdrop.remove();
@@ -332,7 +314,7 @@ export function mountLanding(app, { onEnter }) {
   const panel = el(
     'section',
     { className: 'landing-panel' },
-    el('div', { className: 'brand-badge' }, '🏆 OFFICIAL 3D ARENA'),
+    el('div', { className: 'brand-badge' }, '🏆 RACE 27 GIA ĐÌNH'),
     el('h2', { className: 'brand-title' }, BRAND.name),
     el('p', {}, BRAND.tagline),
     el('div', { className: 'online' }, 'Đang trong đấu trường: ', online, ' cơ thủ'),

@@ -2,6 +2,7 @@
 
 export const BRAND = {
   name: 'Rasson Billiards',
+  tournamentName: 'Race 27 Gia Đình',
   signTop: 'CHAMPIONSHIP ARENA & LOUNGE',
   signMain: 'RASSON BILLIARDS',
   tagline: 'Nơi hội tụ của anh em cơ thủ: giao lưu đường cơ, thách đấu phá bi, cùng dọn bàn và chia sẻ đam mê!',
@@ -47,19 +48,10 @@ export const BALL_CONFIG = [
 ];
 
 export const CUE_STYLES = [
-  { id: 'carbon', name: 'Rasson Carbon Pro', shaft: '#1f242d', wrap: '#111827', ring: '#d4af37' },
+  { id: 'ngocmy', name: 'Ngọc Mỹ', shaft: '#1f242d', wrap: '#111827', ring: '#d4af37' },
   { id: 'revo', name: 'Predator Cobalt', shaft: '#181b22', wrap: '#1e3a8a', ring: '#60a5fa' },
   { id: 'flame', name: 'Flame Maple Classic', shaft: '#d97706', wrap: '#451a03', ring: '#fbbf24' },
   { id: 'dragon', name: 'Crimson Dragon', shaft: '#262626', wrap: '#991b1b', ring: '#f87171' },
-];
-
-export const PLAYER_TITLES = [
-  'Cơ thủ Tập sự',
-  'Thiện xạ Lỗ mười',
-  'Cơ thần Phá bi',
-  'Vua Dọn bàn (Run-Out)',
-  'Phù thuỷ Bida (Magician)',
-  'Đại kiện tướng Rasson',
 ];
 
 // Câu hỏi vui về kiến thức bida trước khi vào đấu trường
@@ -102,26 +94,17 @@ export const QUIZ = [
   },
 ];
 
-export const POLL = {
-  question: 'Cơ thủ nào sẽ giành chức Vô địch giải Rasson Open hôm nay?',
-  options: ['Dương Quốc Hoàng 🇻🇳', 'Shane Van Boening 🇺🇸', 'Joshua Filler 🇩🇪', 'Fedor Gorst 🇺🇸'],
-};
-
-// Bảng điểm kỹ thuật số kiểu Matchroom Pool & World Pool Championship
+// Bảng điểm giải đấu Race 27 Gia Đình
 export const SCOREBOARD = {
-  home: 'HOÀNG SAO 🇻🇳',
-  away: 'FILLER 🇩🇪',
-  score: '8 - 7',
-  race: 'RACE TO 11',
-  note: 'CHUNG KẾT RASSON WORLD ARENA — VÀO GIAO LƯU ĐƯỜNG CƠ 🎱',
-  // Video thi đấu / highlight bi-a chất lượng cao
-  youtubeIds: [
-    '5P_3G6wK-qU', // Matchroom Pool: Top 10 Best Mosconi Cup Shots
-    'T54kL8P22G0', // Efren Reyes Unbelievable Z-Shot & Comeback
-    '44qZf8mZ3rA', // World Pool Championship: Incredible Runouts
-    'sD1hFkP_U_w', // Duong Quoc Hoang vs Shane Van Boening World Pool Masters Highlights
-    '9xK0_kX9r9c', // Best Jump Shots in Pool History
-    '1W9Nn2eR4uI', // 9-Ball Break and Run Clinic
+  title: 'RACE 27 GIA ĐÌNH',
+  image: '/images/scoreboard.jpg',
+  note: 'BẢNG TỈ SỐ CHÍNH THỨC — RACE 27 GIA ĐÌNH 🎱',
+  players: [
+    { name: 'James', score: -9, diff: -1, color: '#a855f7' },
+    { name: 'Khá', score: 21, diff: 1, color: '#3b82f6' },
+    { name: 'Damy', score: 5, color: '#22c55e' },
+    { name: 'Bino', score: -14, color: '#854d0e' },
+    { name: 'Lú', score: -3, color: '#06b6d4' },
   ],
 };
 

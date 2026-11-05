@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
-import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
-import { BRAND, LEGENDS, POLL, SCOREBOARD } from './config.js';
+import { BRAND, LEGENDS, SCOREBOARD } from './config.js';
 import { createAvatar } from './avatar.js';
 import { createAudio } from './audio.js';
 import { connect } from './net.js';
@@ -214,234 +213,81 @@ function addLegendPoster(scene, legend, angle, r) {
 }
 
 // ---------------------------------------------------------------------------
-// Màn hình Lớn: Bảng điểm Matchroom & Video Thi đấu Pool
+// Màn hình Lớn: BẢNG TỈ SỐ RACE 27 GIA ĐÌNH (Hiển thị hình ảnh bảng điểm)
 // ---------------------------------------------------------------------------
 
-function buildScreen(scene, css3dScene, { onVideoError } = {}) {
+function buildScreen(scene) {
   const group = new THREE.Group();
   group.position.set(0, 0, SCREEN_Z);
   scene.add(group);
 
+  // Kích thước chuẩn theo tỉ lệ 1024:472 của hình ảnh bảng điểm
+  const SCORE_W = 10.6;
+  const SCORE_H = (SCORE_W * 472) / 1024; // ~ 4.88
+
+  // Khung viền kim loại đen mạ vàng bao bọc bảng điểm
   const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(11.4, 9.6, 0.4),
-    new THREE.MeshStandardMaterial({ color: '#090d14', roughness: 0.5, metalness: 0.3 }),
+    new THREE.BoxGeometry(11.4, SCORE_H + 2.2, 0.4),
+    new THREE.MeshStandardMaterial({ color: '#090d14', roughness: 0.4, metalness: 0.4 }),
   );
-  frame.position.set(0, 7.0, -0.3);
+  frame.position.set(0, 6.2, -0.3);
   group.add(frame);
 
-  // Bảng điểm kỹ thuật số kiểu Matchroom World Pool Championship
-  const scoreTex = textCanvas(1024, 256, (g, w, h) => {
-    // Nền bảng điểm đen bóng
+  // Thanh tiêu đề trên đỉnh bảng
+  const headerTex = textCanvas(1024, 160, (g, w, h) => {
     g.fillStyle = '#0f172a';
     g.fillRect(0, 0, w, h);
-
-    // Viền vàng kim loại
     g.fillStyle = '#d4af37';
-    g.fillRect(0, 0, w, 14);
+    g.fillRect(0, 0, w, 10);
+    g.fillRect(0, h - 10, w, 10);
 
-    // Cơ thủ 1 (Nhà)
-    g.fillStyle = '#ffffff';
+    g.fillStyle = '#d4af37';
+    g.font = '700 24px "Be Vietnam Pro", sans-serif';
     g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.font = '800 52px "Bitter", Georgia, serif';
-    g.fillText(SCOREBOARD.home, w * 0.24, h / 2 - 12);
+    g.letterSpacing = '4px';
+    g.fillText('OFFICIAL SCORECARD', w / 2, 45);
 
-    // Cơ thủ 2 (Khách)
-    g.fillText(SCOREBOARD.away, w * 0.76, h / 2 - 12);
-
-    // Tỉ số trận đấu
-    g.fillStyle = '#38bdf8';
-    g.font = '900 102px "Bitter", Georgia, serif';
-    g.fillText(SCOREBOARD.score, w / 2, h / 2 - 8);
-
-    // Race to 11
-    g.fillStyle = '#d4af37';
-    g.font = '700 32px "Be Vietnam Pro", sans-serif';
-    g.fillText(SCOREBOARD.race || 'RACE TO 11', w / 2, h - 45);
+    g.fillStyle = '#ffffff';
+    g.font = '900 48px "Bitter", Georgia, serif';
+    g.letterSpacing = '3px';
+    g.fillText('🏆 RACE 27 GIA ĐÌNH 🎱', w / 2, 105);
   });
+  const headerMesh = new THREE.Mesh(new THREE.PlaneGeometry(10.6, 1.4), new THREE.MeshBasicMaterial({ map: headerTex }));
+  headerMesh.position.set(0, 8.85, 0.05);
+  group.add(headerMesh);
 
-  const scoreMesh = new THREE.Mesh(new THREE.PlaneGeometry(10.2, 2.5), new THREE.MeshBasicMaterial({ map: scoreTex }));
-  scoreMesh.position.set(0, 10.3, 0);
+  // Tải hình ảnh bảng điểm thật
+  const loader = new THREE.TextureLoader();
+  const scoreTexture = loader.load(SCOREBOARD.image || '/images/scoreboard.jpg');
+  scoreTexture.colorSpace = THREE.SRGBColorSpace;
+  scoreTexture.minFilter = THREE.LinearMipmapLinearFilter;
+  scoreTexture.anisotropy = 8;
+
+  // Mặt hiển thị hình ảnh bảng điểm
+  const scoreMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(SCORE_W, SCORE_H),
+    new THREE.MeshBasicMaterial({ map: scoreTexture }),
+  );
+  scoreMesh.position.set(0, 5.5, 0.05);
   group.add(scoreMesh);
 
-  // Bảng ghi chú / khẩu hiệu thi đấu
-  const noteTex = textCanvas(768, 96, (g, w, h) => {
-    g.fillStyle = '#1e293b';
-    g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#d4af37';
-    g.lineWidth = 4;
-    g.strokeRect(2, 2, w - 4, h - 4);
-    g.fillStyle = '#f8fafc';
-    g.font = '700 34px "Be Vietnam Pro", sans-serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(SCOREBOARD.note, w / 2, h / 2 + 1);
-  });
-  const noteMesh = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 0.68), new THREE.MeshBasicMaterial({ map: noteTex }));
-  noteMesh.position.set(0, 8.55, 0.05);
-  group.add(noteMesh);
+  // Viền vàng kim loại viền sát hình ảnh
+  const borderMat = new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.9, roughness: 0.2 });
+  const borderBox = new THREE.Mesh(new THREE.BoxGeometry(SCORE_W + 0.16, SCORE_H + 0.16, 0.08), borderMat);
+  borderBox.position.set(0, 5.5, 0.01);
+  group.add(borderBox);
 
-  const VIDEO_W = 9.0;
-  const VIDEO_H = (VIDEO_W * 9) / 16;
-  const videoY = 5.4;
-  let player = null;
-
-  const idleTexture = (message) =>
-    textCanvas(1280, 720, (g, w, h) => {
-      const grad = g.createRadialGradient(w / 2, h / 2, 60, w / 2, h / 2, w * 0.6);
-      grad.addColorStop(0, '#1e293b');
-      grad.addColorStop(1, '#090d14');
-      g.fillStyle = grad;
-      g.fillRect(0, 0, w, h);
-
-      // Logo Rasson 8-Ball lớn ở giữa
-      g.beginPath();
-      g.arc(w / 2, h / 2 - 40, 110, 0, Math.PI * 2);
-      g.fillStyle = '#0f172a';
-      g.fill();
-      g.strokeStyle = '#d4af37';
-      g.lineWidth = 8;
-      g.stroke();
-
-      g.beginPath();
-      g.arc(w / 2, h / 2 - 40, 50, 0, Math.PI * 2);
-      g.fillStyle = '#ffffff';
-      g.fill();
-      g.fillStyle = '#0f172a';
-      g.font = '900 68px "Bitter", serif';
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.fillText('8', w / 2, h / 2 - 38);
-
-      g.fillStyle = '#ffffff';
-      g.font = '900 86px "Bitter", Georgia, serif';
-      g.fillText(BRAND.signMain, w / 2, h / 2 + 130);
-
-      g.fillStyle = '#38bdf8';
-      g.font = '600 36px "Be Vietnam Pro", sans-serif';
-      g.fillText(message, w / 2, h / 2 + 205);
-    });
-
-  const idleMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(VIDEO_W, VIDEO_H),
-    new THREE.MeshBasicMaterial({ map: idleTexture('Đấu trường Rasson Billiards — Sẵn sàng phát sóng!') }),
-  );
-  idleMesh.position.set(0, videoY, 0.02);
-  group.add(idleMesh);
-
-  const playlist = [...SCOREBOARD.youtubeIds].sort(() => Math.random() - 0.5);
-  const blocked = new Set();
-  let current = 0;
-  const currentId = () => playlist[current];
-
-  function advance() {
-    for (let step = 1; step <= playlist.length; step++) {
-      const next = (current + step) % playlist.length;
-      if (!blocked.has(playlist[next])) {
-        current = next;
-        return true;
-      }
-    }
-    return false;
-  }
-
-  if (playlist.length) {
-    idleMesh.visible = false;
-    const hole = new THREE.Mesh(
-      new THREE.PlaneGeometry(VIDEO_W, VIDEO_H),
-      new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0, transparent: true, blending: THREE.NoBlending }),
-    );
-    hole.position.set(0, videoY, 0.02);
-    group.add(hole);
-
-    const box = el('div', { style: 'width:1280px;height:720px;background:#000' }, el('div'));
-    const obj = new CSS3DObject(box);
-    loadYouTubeApi().then((YT) => {
-      player = new YT.Player(box.firstChild, {
-        host: 'https://www.youtube-nocookie.com',
-        videoId: currentId(),
-        width: 1280,
-        height: 720,
-        playerVars: {
-          autoplay: 1,
-          mute: 1,
-          controls: 0,
-          disablekb: 1,
-          fs: 0,
-          rel: 0,
-          playsinline: 1,
-          origin: location.origin,
-        },
-        events: {
-          onReady: (e) => {
-            e.target.mute();
-            e.target.playVideo();
-          },
-          onStateChange: (e) => {
-            if (e.data === YT.PlayerState.ENDED && advance()) e.target.loadVideoById(currentId());
-          },
-          onError: (e) => {
-            blocked.add(currentId());
-            if (advance()) {
-              e.target.loadVideoById(currentId());
-              return;
-            }
-            idleMesh.material.map.dispose();
-            idleMesh.material.map = idleTexture('Highlight bida sẵn sàng trên YouTube');
-            idleMesh.visible = true;
-            hole.visible = false;
-            obj.visible = false;
-            onVideoError?.(e.data);
-          },
-        },
-      });
-    });
-    obj.position.set(0, videoY, SCREEN_Z + 0.02);
-    obj.scale.setScalar(VIDEO_W / 1280);
-    css3dScene.add(obj);
-  }
-
-  const glow = new THREE.PointLight('#38bdf8', 12, 16, 1.6);
-  glow.position.set(0, 6, 2.5);
+  // Ánh sáng dịu nhẹ rọi sáng bảng điểm
+  const glow = new THREE.PointLight('#38bdf8', 16, 18, 1.6);
+  glow.position.set(0, 6.2, 3.0);
   group.add(glow);
 
   return {
-    setVideoMuted(muted) {
-      if (!player?.mute) return;
-      if (muted) player.mute();
-      else {
-        player.unMute();
-        player.setVolume(80);
-        player.playVideo();
-      }
-    },
-    currentVideoId: currentId,
     dispose() {
-      player?.destroy?.();
+      scoreTexture.dispose();
+      headerMesh.material.map.dispose();
     },
   };
-}
-
-let ytApi = null;
-function loadYouTubeApi() {
-  ytApi ??= new Promise((resolve) => {
-    if (window.YT?.Player) return resolve(window.YT);
-    const prev = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      prev?.();
-      resolve(window.YT);
-    };
-    document.head.append(el('script', { src: 'https://www.youtube.com/iframe_api' }));
-  });
-  return ytApi;
-}
-
-function capture(node, pointerId) {
-  try {
-    node.setPointerCapture(pointerId);
-  } catch {
-    // bỏ qua
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -496,6 +342,14 @@ function createBilliardsConfetti(scene) {
   };
 }
 
+function capture(node, pointerId) {
+  try {
+    node.setPointerCapture(pointerId);
+  } catch {
+    // bỏ qua
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Giao diện HUD của Đấu trường Rasson Billiards
 // ---------------------------------------------------------------------------
@@ -506,11 +360,11 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
   const leave = el('button', { className: 'pill', type: 'button' }, '🚪 Rời Đấu Trường');
   const volume = el('input', { type: 'range', min: 0, max: 1, step: 0.05, value: 0.6, 'aria-label': 'Âm lượng' });
   const muteBtn = el('button', { className: 'pill', type: 'button', style: 'padding:6px 8px' }, '🔊');
-  const videoBtn = el('button', { className: 'pill', type: 'button' }, '📺 Tiếng video');
+  const scoreBtn = el('button', { className: 'pill score-hud-btn', type: 'button' }, '📊 Bảng tỉ số');
   const camBtn = el('button', { className: 'pill cam-btn', type: 'button' }, '📷 Góc máy (C)');
   const myHp = el('div', { className: 'pill my-hp', 'aria-label': 'Máu của bạn' });
 
-  const top = el('div', { className: 'hud-top' }, leave, myHp, camBtn, el('div', { className: 'pill vol' }, muteBtn, volume), videoBtn);
+  const top = el('div', { className: 'hud-top' }, leave, myHp, camBtn, scoreBtn, el('div', { className: 'pill vol' }, muteBtn, volume));
   const ghostBanner = el('div', { className: 'ghost-banner' });
 
   const count = el('span', {}, '…');
@@ -525,15 +379,6 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     chat.classList.toggle('collapsed');
     hideChat.textContent = chat.classList.contains('collapsed') ? 'Hiện' : 'Ẩn';
   });
-
-  // Bảng Bình chọn Nhà vô địch
-  const pollBtns = POLL.options.map((text, i) => {
-    const countEl = el('span', { className: 'count' }, '0');
-    const b = el('button', { type: 'button' }, kbd(String(i + 1)), text, countEl);
-    b.countEl = countEl;
-    return b;
-  });
-  const poll = el('div', { className: 'poll' }, el('div', { className: 'poll-q' }, `🏆 ${POLL.question}`), el('div', { className: 'poll-opts' }, ...pollBtns));
 
   // Thanh Biểu tượng Cảm xúc (Emote Bar)
   const EMOTES = ['🎱', '🏆', '🎯', '🔥', '👏', '🍺'];
@@ -573,7 +418,6 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     top,
     roomInfo,
     chat,
-    poll,
     emoteBar,
     celebrate,
     keysBtn,
@@ -662,6 +506,22 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     return node;
   }
 
+  // Xem chi tiết Bảng tỉ số Race 27 Gia Đình
+  scoreBtn.addEventListener('click', () => {
+    const img = el('img', {
+      src: SCOREBOARD.image || '/images/scoreboard.jpg',
+      alt: 'Bảng tỉ số Race 27 Gia Đình',
+      style: 'width:100%;border-radius:10px;box-shadow:0 6px 25px rgba(0,0,0,0.7);display:block;margin-bottom:12px;border:1px solid rgba(212,175,55,0.4)',
+    });
+    const stats = el(
+      'div',
+      { style: 'font-size:13.5px;color:var(--gold);text-align:center;font-weight:700;line-height:1.6' },
+      '🏆 KẾT QUẢ ĐANG DẪN ĐẦU — RACE 27 GIA ĐÌNH',
+      el('div', { style: 'font-size:12.5px;color:var(--ink-soft);font-weight:500;margin-top:4px' }, 'James (-9) • Khá (21) • Damy (5) • Bino (-14) • Lú (-3)'),
+    );
+    card('📊 Bảng Tỉ Số Race 27 Gia Đình', el('div', {}, img, stats), { closeLabel: 'Đóng' });
+  });
+
   let helpCard = null;
   function toggleHelp() {
     if (helpCard?.isConnected) {
@@ -679,9 +539,7 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
       [['R'], 'Xếp lại cụm bi 9-ball trên bàn'],
       [['G'], 'Ăn mừng chiến thắng (Giương gậy cơ & pháo hoa)'],
       [['Enter'], 'Trò chuyện cùng anh em cơ thủ'],
-      [['1', '2', '3', '4'], 'Bình chọn nhà vô địch'],
       [['M'], 'Tắt / bật âm thanh tiếng bi va chạm'],
-      [['V'], 'Tắt / bật tiếng video highlight trên màn hình'],
       [['H'], 'Mở / đóng bảng trợ giúp này'],
     ];
     const grid = el('div', { className: 'keys-grid' });
@@ -696,9 +554,8 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     log,
     volume,
     muteBtn,
-    videoBtn,
+    scoreBtn,
     camBtn,
-    pollBtns,
     emoteBtns,
     celebrate,
     tableActions,
@@ -733,9 +590,8 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
 
 export function mountCave(app, { profile, onLeave }) {
   const stage = el('div', { className: 'stage' });
-  const css3dLayer = el('div', { className: 'css3d-layer' });
   const loading = el('div', { className: 'loading' }, '🎱 Đang bước vào Đấu Trường Rasson Billiards…');
-  app.append(css3dLayer, stage, loading);
+  app.append(stage, loading);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
@@ -747,24 +603,12 @@ export function mountCave(app, { profile, onLeave }) {
   labelRenderer.domElement.style.cssText = 'position:absolute;inset:0;pointer-events:none';
   stage.append(labelRenderer.domElement);
 
-  const css3d = new CSS3DRenderer();
-  css3dLayer.append(css3d.domElement);
-  const css3dScene = new THREE.Scene();
-
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 140);
 
   const audio = createAudio();
   const { table, torches } = buildArena(scene, audio);
-
-  let videoBlocked = false;
-  const screen = buildScreen(scene, css3dScene, {
-    onVideoError() {
-      videoBlocked = true;
-      hud.videoBtn.textContent = '▶ Xem video trên YouTube';
-    },
-  });
-
+  const screen = buildScreen(scene);
   const confetti = createBilliardsConfetti(scene);
 
   let camMode = 0; // 0: 3rd person follow, 1: 1st person cueist, 2: Table view
@@ -796,7 +640,7 @@ export function mountCave(app, { profile, onLeave }) {
   let myId = null;
 
   const me = {
-    avatar: createAvatar(profile.number, profile.cueStyle),
+    avatar: createAvatar(profile.number, profile.cueStyle || 'ngocmy'),
     pos: new THREE.Vector3(0, 0, 7.5),
     ry: Math.PI,
     knock: new THREE.Vector3(),
@@ -806,16 +650,15 @@ export function mountCave(app, { profile, onLeave }) {
   me.avatar.ring.material.color.set(BRAND.jersey.trim);
   me.avatar.ring.material.opacity = 0.5;
 
-  const myLabel = makeLabel(profile.name, profile.number, profile.title, true);
+  const myLabel = makeLabel(profile.name, profile.number, true);
   me.avatar.root.add(myLabel.obj);
 
-  function makeLabel(name, number, title = 'Cơ thủ', isMe = false) {
+  function makeLabel(name, number, isMe = false) {
     const node = el('div', { className: `nametag${isMe ? ' me' : ''}` });
     const ballCanvas = el('canvas', { width: 32, height: 32, className: 'ball-tag-icon' });
     drawPoolBallIcon(ballCanvas, number ?? 8);
 
     node.append(ballCanvas, el('span', { className: 'player-name' }, name));
-    if (title) node.append(el('span', { className: 'title-badge' }, title));
 
     const hearts = el('div', { className: 'hearts' });
     const emoteHolder = el('div', { className: 'emote-bubble' });
@@ -851,8 +694,8 @@ export function mountCave(app, { profile, onLeave }) {
 
   function addOther(p) {
     if (p.id === myId || others.has(p.id)) return;
-    const avatar = createAvatar(p.number, p.cueStyle || 'carbon');
-    const label = makeLabel(p.name, p.number, p.title);
+    const avatar = createAvatar(p.number, p.cueStyle || 'ngocmy');
+    const label = makeLabel(p.name, p.number);
     avatar.root.add(label.obj);
     avatar.root.position.set(p.x, 0, p.z);
     avatar.root.rotation.y = p.ry;
@@ -898,20 +741,6 @@ export function mountCave(app, { profile, onLeave }) {
     return id === myId ? profile.name : others.get(id)?.name ?? 'Cơ thủ';
   }
 
-  // --- Bình chọn ------------------------------------------------------------
-  let myVote = null;
-  function renderPoll(counts) {
-    hud.pollBtns.forEach((b, i) => {
-      b.countEl.textContent = counts[i] ?? 0;
-      b.classList.toggle('mine', myVote === i);
-    });
-  }
-  let lastCounts = POLL.options.map(() => 0);
-  hud.pollBtns.forEach((b, i) => b.addEventListener('click', () => vote(i)));
-  function vote(i) {
-    net.send({ t: 'vote', v: i });
-  }
-
   // Biểu tượng cảm xúc
   hud.emoteBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -939,8 +768,6 @@ export function mountCave(app, { profile, onLeave }) {
       msg.players.forEach(addOther);
       hud.log.replaceChildren();
       msg.chat.forEach(hud.addChat);
-      lastCounts = msg.poll.counts;
-      renderPoll(lastCounts);
       updateCount();
       loading.remove();
       maybeTutorial();
@@ -1014,14 +841,6 @@ export function mountCave(app, { profile, onLeave }) {
       confetti.burst(av.root.position);
       if (msg.id === myId) audio.cheer();
     },
-    poll(msg) {
-      lastCounts = msg.counts;
-      renderPoll(lastCounts);
-    },
-    myvote(msg) {
-      myVote = msg.v;
-      renderPoll(lastCounts);
-    },
   });
 
   // --- Hướng dẫn lần đầu ----------------------------------------------------
@@ -1046,22 +865,11 @@ export function mountCave(app, { profile, onLeave }) {
     hud.card('🎱 Chào mừng đến với Rasson Billiards!', p);
   }
 
-  // --- Âm thanh / Video -----------------------------------------------------
-  let videoMuted = true;
-  function toggleVideo() {
-    if (videoBlocked) {
-      open(`https://www.youtube.com/watch?v=${screen.currentVideoId()}`, '_blank', 'noopener');
-      return;
-    }
-    videoMuted = !videoMuted;
-    screen.setVideoMuted(videoMuted);
-    hud.videoBtn.textContent = videoMuted ? '📺 Tiếng video' : '📺 Tắt tiếng video';
-  }
+  // --- Âm thanh -------------------------------------------------------------
   function toggleMute() {
     const m = audio.toggleMute();
     hud.muteBtn.textContent = m ? '🔇' : '🔊';
   }
-  hud.videoBtn.addEventListener('click', toggleVideo);
   hud.muteBtn.addEventListener('click', toggleMute);
   hud.volume.addEventListener('input', () => {
     audio.unlock();
@@ -1134,7 +942,6 @@ export function mountCave(app, { profile, onLeave }) {
     else if (k === 'g') doCelebrate();
     else if (k === 'h') hud.toggleHelp();
     else if (k === 'm') toggleMute();
-    else if (k === 'v') toggleVideo();
     else if (k === 'c') toggleCameraMode();
     else if (k === 'r') {
       table.resetRack();
@@ -1144,8 +951,6 @@ export function mountCave(app, { profile, onLeave }) {
       table.breakShot(19);
       net.send({ t: 'table_break', power: 19 });
       hud.showToast('💥 Cú phá bi sấm sét!');
-    } else if (k >= '1' && k <= String(POLL.options.length)) {
-      vote(Number(k) - 1);
     }
   }
 
@@ -1213,7 +1018,6 @@ export function mountCave(app, { profile, onLeave }) {
     const h = stage.clientHeight;
     renderer.setSize(w, h);
     labelRenderer.setSize(w, h);
-    css3d.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
@@ -1351,7 +1155,6 @@ export function mountCave(app, { profile, onLeave }) {
 
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
-    css3d.render(css3dScene, camera);
   }
   raf = requestAnimationFrame(frame);
 

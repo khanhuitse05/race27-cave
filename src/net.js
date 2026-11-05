@@ -18,8 +18,7 @@ export function connect(profile, handlers) {
           t: 'join',
           name: profile.name,
           number: profile.number,
-          title: profile.title,
-          cueStyle: profile.cueStyle,
+          cueStyle: profile.cueStyle || 'ngocmy',
         }),
       );
       handlers.status?.('online');

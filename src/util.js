@@ -21,9 +21,8 @@ export function loadProfile() {
     const parsed = JSON.parse(raw);
     return {
       name: parsed.name || '',
-      number: parsed.number ?? 8,
-      title: parsed.title || 'Cơ thủ Tập sự',
-      cueStyle: parsed.cueStyle || 'carbon',
+      number: parsed.number ?? (Math.floor(Math.random() * 15) + 1),
+      cueStyle: parsed.cueStyle || 'ngocmy',
       clothColor: parsed.clothColor || BRAND.cloth,
     };
   } catch {
@@ -34,9 +33,8 @@ export function loadProfile() {
 function getDefaultProfile() {
   return {
     name: '',
-    number: 8,
-    title: 'Cơ thủ Tập sự',
-    cueStyle: 'carbon',
+    number: Math.floor(Math.random() * 15) + 1,
+    cueStyle: 'ngocmy',
     clothColor: BRAND.cloth,
   };
 }

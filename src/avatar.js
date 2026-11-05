@@ -168,7 +168,7 @@ function createCueMesh(styleId = 'carbon') {
 /**
  * Nhân vật Cơ thủ Bida 3D đầy phong cách với Áo Polo, Găng tay Bi-a và Gậy Cơ Rasson
  */
-export function createAvatar(number = 8, cueStyle = 'carbon') {
+export function createAvatar(number = 8, cueStyle = 'ngocmy') {
   const root = new THREE.Group();
 
   // Thân áo polo
