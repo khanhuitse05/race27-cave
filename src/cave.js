@@ -104,22 +104,21 @@ function buildArena(scene, audio) {
   const arenaTorches = [];
   const wallR = 23.5;
 
-  const bannerTex = textCanvas(128, 256, (g, w, h) => {
-    g.fillStyle = '#111827';
-    g.fillRect(0, 0, w, h);
-    g.fillStyle = '#d4af37';
-    g.fillRect(0, 0, w, 14);
-    g.fillRect(0, h - 14, w, 14);
-    g.beginPath();
-    g.arc(w / 2, h / 2, 34, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = '#111827';
-    g.font = '900 32px "Bitter", serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText('R', w / 2, h / 2 + 1);
+  const loader = new THREE.TextureLoader();
+  const bannerLogoTex = loader.load(BRAND.logo || '/images/logo.png');
+  bannerLogoTex.colorSpace = THREE.SRGBColorSpace;
+  bannerLogoTex.minFilter = THREE.LinearMipmapLinearFilter;
+  const bannerMat = new THREE.MeshStandardMaterial({
+    map: bannerLogoTex,
+    side: THREE.DoubleSide,
+    roughness: 0.5,
+    metalness: 0.1,
   });
-  const bannerMat = new THREE.MeshStandardMaterial({ map: bannerTex, side: THREE.DoubleSide, roughness: 0.8 });
+  const bannerBorderMat = new THREE.MeshStandardMaterial({
+    color: '#d4af37',
+    metalness: 0.85,
+    roughness: 0.25,
+  });
 
   // Treo poster chân dung các cơ thủ huyền thoại
   for (let i = 0; i < LEGENDS.length; i++) {
@@ -129,7 +128,7 @@ function buildArena(scene, audio) {
     addLegendPoster(scene, LEGENDS[i], a, wallR);
   }
 
-  // Đèn hắt LED và cờ Rasson xung quanh tường
+  // Đèn hắt LED và cờ / banner Logo Bearbrick Rasson xung quanh tường
   for (let i = 0; i < 10; i++) {
     const a = (i / 10) * Math.PI * 2 + 0.31;
     const torch = createArenaTorch();
@@ -138,11 +137,18 @@ function buildArena(scene, audio) {
     scene.add(torch.group);
     arenaTorches.push(torch);
 
-    const banner = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.4), bannerMat);
+    const bannerGroup = new THREE.Group();
+    const bannerBack = new THREE.Mesh(new THREE.PlaneGeometry(1.92, 1.92), bannerBorderMat);
+    bannerBack.position.z = -0.01;
+    bannerGroup.add(bannerBack);
+
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.8), bannerMat);
+    bannerGroup.add(banner);
+
     const b = a + 0.31;
-    banner.position.set(Math.cos(b) * (wallR + 0.6), 5.2, Math.sin(b) * (wallR + 0.6));
-    banner.lookAt(0, 5.2, 0);
-    scene.add(banner);
+    bannerGroup.position.set(Math.cos(b) * (wallR + 0.6), 5.2, Math.sin(b) * (wallR + 0.6));
+    bannerGroup.lookAt(0, 5.2, 0);
+    scene.add(bannerGroup);
   }
 
   return { table, torches: arenaTorches };
@@ -368,7 +374,16 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
   const ghostBanner = el('div', { className: 'ghost-banner' });
 
   const count = el('span', {}, '…');
-  const roomInfo = el('div', { className: 'room-info' }, el('b', {}, BRAND.roomName), count);
+  const roomInfo = el(
+    'div',
+    { className: 'room-info' },
+    el(
+      'div',
+      { className: 'room-info-row' },
+      el('img', { src: BRAND.logo || '/images/logo.png', alt: 'Logo', className: 'room-info-logo' }),
+      el('div', {}, el('b', {}, BRAND.roomName), count),
+    ),
+  );
 
   // Khung Chat
   const log = el('div', { className: 'chat-log', role: 'log' });

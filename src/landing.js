@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BRAND, CUE_STYLES, QUIZ } from './config.js';
 import { createHangingCueRack } from './avatar.js';
-import { rockGeometry, rockMaterial, rng, textCanvas } from './scenery.js';
+import { rockGeometry, rockMaterial, rng } from './scenery.js';
 import { el, loadProfile, saveProfile } from './util.js';
 
 function buildLandingScene(scene) {
@@ -93,66 +93,32 @@ function buildLandingScene(scene) {
   glowLight.position.set(0, 1.2, -6.5);
   scene.add(glowLight);
 
-  // Biển hiệu đá Rasson Billiards mạ vàng bên trái cổng
-  const signTex = textCanvas(768, 512, (g, w, h) => {
-    // Nền đá đen viền vàng kim loại
-    const grad = g.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, '#1a1f2c');
-    grad.addColorStop(1, '#0c0f17');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, w, h);
+  // Biển hiệu đá Rasson Billiards hiển thị Logo gấu Bearbrick chính hãng
+  const loader = new THREE.TextureLoader();
+  const logoTexture = loader.load(BRAND.logo || '/images/logo.png');
+  logoTexture.colorSpace = THREE.SRGBColorSpace;
+  logoTexture.minFilter = THREE.LinearMipmapLinearFilter;
 
-    g.strokeStyle = '#d4af37';
-    g.lineWidth = 12;
-    g.strokeRect(10, 10, w - 20, h - 20);
-
-    // Bi số 8 mạ vàng ở đỉnh
-    g.beginPath();
-    g.arc(w / 2, 145, 75, 0, Math.PI * 2);
-    g.fillStyle = '#0f172a';
-    g.fill();
-    g.strokeStyle = '#d4af37';
-    g.lineWidth = 8;
-    g.stroke();
-
-    g.beginPath();
-    g.arc(w / 2, 145, 36, 0, Math.PI * 2);
-    g.fillStyle = '#ffffff';
-    g.fill();
-    g.fillStyle = '#0f172a';
-    g.font = '900 48px "Bitter", Georgia, serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText('8', w / 2, 147);
-
-    // Chữ RASSON BILLIARDS
-    g.fillStyle = '#d4af37';
-    g.font = '700 30px "Be Vietnam Pro", sans-serif';
-    g.letterSpacing = '4px';
-    g.fillText(BRAND.signTop, w / 2, 285);
-
-    g.fillStyle = '#ffffff';
-    g.font = '900 78px "Bitter", Georgia, serif';
-    g.letterSpacing = '2px';
-    g.fillText('RASSON', w / 2, 370);
-
-    g.fillStyle = '#38bdf8';
-    g.font = '800 40px "Bitter", Georgia, serif';
-    g.letterSpacing = '4px';
-    g.fillText('BILLIARDS ARENA', w / 2, 435);
-  });
-
-  const slab = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.35, 40), rockMaterial('#1c202a'));
-  slab.scale.set(2.4, 1, 1.6);
-  slab.rotation.x = Math.PI / 2;
-  slab.position.set(-5.0, 2.0, 2.2);
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(3.3, 3.3, 0.35), rockMaterial('#1c202a'));
+  slab.position.set(-5.0, 2.2, 2.2);
   slab.castShadow = true;
   scene.add(slab);
 
-  const signFace = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.8 }));
-  signFace.scale.set(2.25, 1.48, 1);
-  signFace.position.set(-5.0, 2.0, 2.38);
+  // Mặt biển logo Rasson
+  const signFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.9, 2.9),
+    new THREE.MeshStandardMaterial({ map: logoTexture, roughness: 0.45, metalness: 0.1 }),
+  );
+  signFace.position.set(-5.0, 2.2, 2.39);
   scene.add(signFace);
+
+  // Khung viền mạ vàng xung quanh logo
+  const goldFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(3.04, 3.04, 0.08),
+    new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.9, roughness: 0.2 }),
+  );
+  goldFrame.position.set(-5.0, 2.2, 2.36);
+  scene.add(goldFrame);
 
   const base = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.5, 1.3), rockMaterial('#181b24'));
   base.position.set(-5.0, 0.25, 2.2);
@@ -186,7 +152,8 @@ function buildLandingScene(scene) {
 /**
  * Hộp thoại tạo Profile cơ thủ (Tên, Gậy cơ)
  * Title: "Race 27 Gia Đình"
- * Bi số may mắn sau lưng random tự động, ẩn trên giao diện
+ * Logo Rasson Bearbrick hiển thị góc trang trọng
+ * Bi số may mắn sau lưng random tự động
  */
 function nameDialog(root, onSubmit) {
   const saved = loadProfile();
@@ -218,9 +185,18 @@ function nameDialog(root, onSubmit) {
   const form = el(
     'form',
     { className: 'modal' },
-    el('div', { className: 'eyebrow' }, 'HỒ SƠ CƠ THỦ THI ĐẤU'),
-    el('h2', {}, 'Race 27 Gia Đình'),
-    el('label', {}, 'Tên hiển thị của cơ thủ'),
+    el(
+      'div',
+      { className: 'modal-brand-row' },
+      el('img', { src: BRAND.logo || '/images/logo.png', alt: 'Rasson Logo', className: 'modal-logo-img' }),
+      el(
+        'div',
+        {},
+        el('div', { className: 'eyebrow' }, 'HỒ SƠ CƠ THỦ THI ĐẤU'),
+        el('h2', { style: 'margin:0' }, 'Race 27 Gia Đình'),
+      ),
+    ),
+    el('label', { style: 'margin-top:10px' }, 'Tên hiển thị của cơ thủ'),
     nameInput,
     counter,
     el('label', { style: 'margin-top:14px' }, 'Gậy cơ thi đấu'),
@@ -314,7 +290,12 @@ export function mountLanding(app, { onEnter }) {
   const panel = el(
     'section',
     { className: 'landing-panel' },
-    el('div', { className: 'brand-badge' }, '🏆 RACE 27 GIA ĐÌNH'),
+    el(
+      'div',
+      { className: 'brand-header-row' },
+      el('img', { src: BRAND.logo || '/images/logo.png', alt: 'Rasson Logo', className: 'panel-logo-img' }),
+      el('div', { className: 'brand-badge' }, '🏆 RACE 27 GIA ĐÌNH'),
+    ),
     el('h2', { className: 'brand-title' }, BRAND.name),
     el('p', {}, BRAND.tagline),
     el('div', { className: 'online' }, 'Đang trong đấu trường: ', online, ' cơ thủ'),

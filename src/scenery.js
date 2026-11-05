@@ -143,22 +143,34 @@ export function createRassonBilliardsTable(audio = null) {
   apron.castShadow = true;
   group.add(apron);
 
-  // Biển hiệu Rasson mạ vàng hai bên sườn bàn
-  const logoTex = textCanvas(256, 64, (g, w, h) => {
-    g.fillStyle = '#0a0d12';
-    g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#d4af37';
-    g.lineWidth = 2;
-    g.strokeRect(2, 2, w - 4, h - 4);
-    g.fillStyle = '#d4af37';
-    g.font = '900 24px "Bitter", serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText('RASSON OX', w / 2, h / 2);
+  // Biển hiệu Logo Rasson Bearbrick mạ vàng hai bên sườn bàn
+  const tableLoader = new THREE.TextureLoader();
+  const tableLogoTex = tableLoader.load('/images/logo.png');
+  tableLogoTex.colorSpace = THREE.SRGBColorSpace;
+  tableLogoTex.minFilter = THREE.LinearMipmapLinearFilter;
+  const tableLogoMat = new THREE.MeshStandardMaterial({
+    map: tableLogoTex,
+    roughness: 0.4,
+    metalness: 0.1,
   });
-  const logoMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.16), new THREE.MeshBasicMaterial({ map: logoTex }));
+  const tableLogoBorderMat = new THREE.MeshStandardMaterial({
+    color: '#d4af37',
+    metalness: 0.85,
+    roughness: 0.2,
+  });
+
+  const logoFrame = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.24), tableLogoBorderMat);
+  logoFrame.position.set(0, TABLE_H - 0.18, TABLE_W / 2 + 0.005);
+  group.add(logoFrame);
+
+  const logoMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22), tableLogoMat);
   logoMesh.position.set(0, TABLE_H - 0.18, TABLE_W / 2 + 0.01);
   group.add(logoMesh);
+
+  const logoFrameBack = logoFrame.clone();
+  logoFrameBack.position.z = -TABLE_W / 2 - 0.005;
+  logoFrameBack.rotation.y = Math.PI;
+  group.add(logoFrameBack);
 
   const logoMeshBack = logoMesh.clone();
   logoMeshBack.position.z = -TABLE_W / 2 - 0.01;

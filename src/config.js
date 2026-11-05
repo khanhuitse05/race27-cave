@@ -2,6 +2,8 @@
 
 export const BRAND = {
   name: 'Rasson Billiards',
+  logo: '/images/logo.png',
+  logoJpg: '/images/logo.jpg',
   tournamentName: 'Race 27 Gia Đình',
   signTop: 'CHAMPIONSHIP ARENA & LOUNGE',
   signMain: 'RASSON BILLIARDS',
