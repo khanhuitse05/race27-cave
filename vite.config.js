@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 const SERVER = 'http://localhost:8787';
 
 export default defineConfig({
+  base: './',
   server: {
     port: 5173,
     proxy: {
@@ -11,3 +12,4 @@ export default defineConfig({
     },
   },
 });
+

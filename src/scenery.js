@@ -145,7 +145,7 @@ export function createRassonBilliardsTable(audio = null) {
 
   // Biển hiệu Logo Rasson Bearbrick mạ vàng hai bên sườn bàn
   const tableLoader = new THREE.TextureLoader();
-  const tableLogoTex = tableLoader.load('/images/logo.png');
+  const tableLogoTex = tableLoader.load(BRAND.logo);
   tableLogoTex.colorSpace = THREE.SRGBColorSpace;
   tableLogoTex.minFilter = THREE.LinearMipmapLinearFilter;
   const tableLogoMat = new THREE.MeshStandardMaterial({

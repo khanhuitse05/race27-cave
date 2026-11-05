@@ -1,9 +1,11 @@
 // Cấu hình thương hiệu và nội dung cho Đấu trường Rasson Billiards
 
+const base = import.meta.env.BASE_URL || './';
+
 export const BRAND = {
   name: 'Rasson Billiards',
-  logo: '/images/logo.png',
-  logoJpg: '/images/logo.jpg',
+  logo: `${base}images/logo.png`,
+  logoJpg: `${base}images/logo.jpg`,
   tournamentName: 'Race 27 Gia Đình',
   signTop: 'CHAMPIONSHIP ARENA & LOUNGE',
   signMain: 'RASSON BILLIARDS',
@@ -59,7 +61,7 @@ export const CUE_STYLES = [
 // Bảng điểm giải đấu Race 27 Gia Đình
 export const SCOREBOARD = {
   title: 'RACE 27 GIA ĐÌNH',
-  image: '/images/scoreboard.jpg',
+  image: `${base}images/scoreboard.jpg`,
   note: 'BẢNG TỈ SỐ CHÍNH THỨC — RACE 27 GIA ĐÌNH 🎱',
   players: [
     { name: 'James', score: -9, diff: -1, color: '#a855f7' },
