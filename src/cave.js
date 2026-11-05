@@ -901,7 +901,7 @@ export function mountCave(app, { profile, onLeave }) {
   let myId = null;
 
   const me = {
-    avatar: createAvatar(profile.number, profile.cueStyle || 'ngocmy'),
+    avatar: createAvatar(profile.number ?? 8, profile.cueStyle || 'ngocmy'),
     pos: new THREE.Vector3(0, 0, 7.5),
     ry: Math.PI,
     knock: new THREE.Vector3(),
@@ -911,7 +911,7 @@ export function mountCave(app, { profile, onLeave }) {
   me.avatar.ring.material.color.set(BRAND.jersey.trim);
   me.avatar.ring.material.opacity = 0.5;
 
-  const myLabel = makeLabel(profile.name, profile.number, true);
+  const myLabel = makeLabel(profile.name, profile.number ?? 8, true);
   me.avatar.root.add(myLabel.obj);
 
   function makeLabel(name, number, isMe = false) {
@@ -955,8 +955,8 @@ export function mountCave(app, { profile, onLeave }) {
 
   function addOther(p) {
     if (p.id === myId || others.has(p.id)) return;
-    const avatar = createAvatar(p.number, p.cueStyle || 'ngocmy');
-    const label = makeLabel(p.name, p.number);
+    const avatar = createAvatar(p.number ?? 8, p.cueStyle || 'ngocmy');
+    const label = makeLabel(p.name, p.number ?? 8);
     avatar.root.add(label.obj);
     avatar.root.position.set(p.x, 0, p.z);
     avatar.root.rotation.y = p.ry;
@@ -1011,18 +1011,42 @@ export function mountCave(app, { profile, onLeave }) {
     });
   });
 
+  let isEntered = false;
+  function enterArena() {
+    if (isEntered) return;
+    isEntered = true;
+    loading.remove();
+    if (!myId) {
+      myId = 1;
+      setHealth(myId, MAX_HP, 0);
+      updateCount();
+      maybeTutorial();
+    }
+  }
+
+  // Safety timer: Never let the player freeze on the loading screen
+  const safetyTimer = setTimeout(() => {
+    if (!isEntered) {
+      enterArena();
+      hud.showToast('ℹ️ Đang vào Đấu Trường (Đang tìm máy chủ...)');
+    }
+  }, 1200);
+
   // --- WebSocket Network ----------------------------------------------------
   const net = connect(profile, {
     status(s) {
-      if (s === 'offline') hud.showToast('⚠️ Mất kết nối, đang tự động kết nối lại…');
+      if (s === 'offline' && isEntered) hud.showToast('⚠️ Mất kết nối, đang tự động kết nối lại…');
     },
     welcome(msg) {
+      clearTimeout(safetyTimer);
       for (const id of [...others.keys()]) removeOther(id);
       myId = msg.id;
       const self = msg.players.find((p) => p.id === myId);
       if (self) {
         me.pos.set(self.x, 0, self.z);
         setHealth(myId, self.hp ?? MAX_HP, self.ghostLeft ?? 0);
+      } else {
+        setHealth(myId, MAX_HP, 0);
       }
       me.ry = Math.atan2(-me.pos.x, -me.pos.z);
       camYaw = me.ry + Math.PI;
@@ -1030,8 +1054,9 @@ export function mountCave(app, { profile, onLeave }) {
       hud.log.replaceChildren();
       msg.chat.forEach(hud.addChat);
       updateCount();
-      loading.remove();
+      enterArena();
       maybeTutorial();
+      hud.showToast('🌐 Đã kết nối Đấu Trường!');
     },
     join(msg) {
       addOther(msg.p);
@@ -1096,11 +1121,11 @@ export function mountCave(app, { profile, onLeave }) {
       }
     },
     celebrate(msg) {
+      if (msg.id === myId) return;
       const av = avatarOf(msg.id);
       if (!av) return;
       av.celebrate();
       confetti.burst(av.root.position);
-      if (msg.id === myId) audio.cheer();
     },
   });
 
@@ -1143,7 +1168,13 @@ export function mountCave(app, { profile, onLeave }) {
     e.stopPropagation();
     if (e.key === 'Enter') {
       const text = hud.input.value.trim();
-      if (text) net.send({ t: 'chat', text });
+      if (text) {
+        const sent = net.send({ t: 'chat', text });
+        if (!sent) {
+          myLabel.say(text);
+          hud.addChat({ name: profile.name, text, id: myId });
+        }
+      }
       hud.input.value = '';
       hud.input.blur();
     } else if (e.key === 'Escape') {
@@ -1171,7 +1202,12 @@ export function mountCave(app, { profile, onLeave }) {
   }
 
   function doCelebrate() {
-    if (!me.avatar.celebrating) net.send({ t: 'celebrate' });
+    if (!me.avatar.celebrating) {
+      me.avatar.celebrate();
+      confetti.burst(me.pos);
+      audio.cheer();
+      net.send({ t: 'celebrate' });
+    }
   }
   hud.celebrate.addEventListener('click', doCelebrate);
   hud.strikeTouch.addEventListener('pointerdown', (e) => {
@@ -1421,6 +1457,7 @@ export function mountCave(app, { profile, onLeave }) {
 
   return () => {
     cancelAnimationFrame(raf);
+    clearTimeout(safetyTimer);
     screen.dispose();
     net.close();
     audio.close();
