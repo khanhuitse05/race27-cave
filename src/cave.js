@@ -219,76 +219,321 @@ function addLegendPoster(scene, legend, angle, r) {
 }
 
 // ---------------------------------------------------------------------------
-// Màn hình Lớn: BẢNG TỈ SỐ RACE 27 GIA ĐÌNH (Hiển thị hình ảnh bảng điểm)
+// Màn hình Lớn: BẢNG TỈ SỐ RACE 27 GIA ĐÌNH (Vẽ 100% bằng Canvas Code sắc nét)
 // ---------------------------------------------------------------------------
+
+function drawRoundedRect(g, x, y, width, height, radius) {
+  if (typeof g.roundRect === 'function') {
+    g.beginPath();
+    g.roundRect(x, y, width, height, radius);
+    return;
+  }
+  g.beginPath();
+  g.moveTo(x + radius, y);
+  g.lineTo(x + width - radius, y);
+  g.arcTo(x + width, y, x + width, y + radius, radius);
+  g.lineTo(x + width, y + height - radius);
+  g.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+  g.lineTo(x + radius, y + height);
+  g.arcTo(x, y, x, y + height - radius, radius);
+  g.lineTo(x, y + radius);
+  g.arcTo(x, y, x + radius, y, radius);
+  g.closePath();
+}
+
+export function drawScoreboardCanvas(w = 2048, h = 1024) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const g = canvas.getContext('2d');
+  const s = w / 2048;
+
+  const halfH = h / 2;
+  const halfW = w / 2;
+  const thirdW = w / 3;
+
+  // 1. TOP-LEFT: James (-9) — Gradient Tím / Magenta
+  {
+    const grad1 = g.createLinearGradient(0, 0, halfW, halfH);
+    grad1.addColorStop(0, '#9333ea');
+    grad1.addColorStop(0.5, '#a21caf');
+    grad1.addColorStop(1, '#701a75');
+    g.fillStyle = grad1;
+    g.fillRect(0, 0, halfW, halfH);
+
+    // Meatballs menu icon (3 dots)
+    g.fillStyle = 'rgba(255, 255, 255, 0.16)';
+    g.beginPath();
+    g.arc(70 * s, 68 * s, 26 * s, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#ffffff';
+    for (const dy of [-10, 0, 10]) {
+      g.beginPath();
+      g.arc(70 * s, (68 + dy) * s, 3.5 * s, 0, Math.PI * 2);
+      g.fill();
+    }
+
+    // "LOG 3" pill
+    g.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    g.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    g.lineWidth = Math.max(1, 2 * s);
+    drawRoundedRect(g, 116 * s, 42 * s, 126 * s, 52 * s, 26 * s);
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#ffffff';
+    g.font = `700 ${Math.round(20 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('LOG 3', (116 + 63) * s, (42 + 26) * s);
+
+    // Big Score: -9
+    g.font = `900 ${Math.round(220 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.fillStyle = '#ffffff';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('-9', halfW / 2, halfH / 2 - 15 * s);
+
+    // Name: James
+    g.font = `800 ${Math.round(54 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.textAlign = 'left';
+    g.textBaseline = 'alphabetic';
+    g.fillText('James', 55 * s, halfH - 45 * s);
+
+    // Badge: -1 pill
+    g.fillStyle = '#e11d48';
+    drawRoundedRect(g, halfW - 105 * s, halfH - 76 * s, 65 * s, 44 * s, 22 * s);
+    g.fill();
+    g.fillStyle = '#ffffff';
+    g.font = `700 ${Math.round(24 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('-1', (halfW - 105 + 32.5) * s, (halfH - 76 + 22) * s);
+  }
+
+  // 2. TOP-RIGHT: Khá (21) — Gradient Xanh Dương Điện (Electric Blue)
+  {
+    const grad2 = g.createLinearGradient(halfW, 0, w, halfH);
+    grad2.addColorStop(0, '#0284c7');
+    grad2.addColorStop(0.5, '#2563eb');
+    grad2.addColorStop(1, '#1d4ed8');
+    g.fillStyle = grad2;
+    g.fillRect(halfW, 0, halfW, halfH);
+
+    // Lock icon button in top right
+    g.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    g.strokeStyle = 'rgba(249, 115, 22, 0.85)';
+    g.lineWidth = Math.max(1, 2.5 * s);
+    g.beginPath();
+    g.arc(w - 70 * s, 68 * s, 26 * s, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+
+    // Lock icon
+    g.fillStyle = '#ffffff';
+    drawRoundedRect(g, w - 81 * s, 65 * s, 22 * s, 18 * s, 4 * s);
+    g.fill();
+    g.strokeStyle = '#ffffff';
+    g.lineWidth = Math.max(1, 3 * s);
+    g.beginPath();
+    g.arc(w - 70 * s, 63 * s, 7 * s, Math.PI, 0);
+    g.stroke();
+
+    // Big Score: 21
+    g.font = `900 ${Math.round(220 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.fillStyle = '#ffffff';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('21', halfW + halfW / 2, halfH / 2 - 15 * s);
+
+    // Name: Khá
+    g.font = `800 ${Math.round(54 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.textAlign = 'left';
+    g.textBaseline = 'alphabetic';
+    g.fillText('Khá', halfW + 55 * s, halfH - 45 * s);
+
+    // Badge: +1 pill
+    g.fillStyle = '#2563eb';
+    drawRoundedRect(g, w - 105 * s, halfH - 76 * s, 65 * s, 44 * s, 22 * s);
+    g.fill();
+    g.fillStyle = '#ffffff';
+    g.font = `700 ${Math.round(24 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('+1', (w - 105 + 32.5) * s, (halfH - 76 + 22) * s);
+  }
+
+  // 3. BOTTOM-LEFT: Damy (5) — Gradient Xanh Lá (Emerald Green)
+  {
+    const grad3 = g.createLinearGradient(0, halfH, thirdW, h);
+    grad3.addColorStop(0, '#16a34a');
+    grad3.addColorStop(0.5, '#15803d');
+    grad3.addColorStop(1, '#166534');
+    g.fillStyle = grad3;
+    g.fillRect(0, halfH, thirdW, halfH);
+
+    // Left chevron icon ›
+    g.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    g.font = `800 ${Math.round(40 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.textAlign = 'left';
+    g.textBaseline = 'middle';
+    g.fillText('›', 20 * s, halfH + halfH / 2);
+
+    // Big Score: 5
+    g.font = `900 ${Math.round(220 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.fillStyle = '#ffffff';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('5', thirdW / 2, halfH + halfH / 2 - 15 * s);
+
+    // Name: Damy
+    g.font = `800 ${Math.round(54 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.textAlign = 'left';
+    g.textBaseline = 'alphabetic';
+    g.fillText('Damy', 55 * s, h - 45 * s);
+  }
+
+  // 4. BOTTOM-MIDDLE: Bino (-14) — Gradient Nâu Đồng / Bronze
+  {
+    const grad4 = g.createLinearGradient(thirdW, halfH, thirdW * 2, h);
+    grad4.addColorStop(0, '#854d0e');
+    grad4.addColorStop(0.5, '#713f12');
+    grad4.addColorStop(1, '#451a03');
+    g.fillStyle = grad4;
+    g.fillRect(thirdW, halfH, thirdW, halfH);
+
+    // Big Score: -14
+    g.font = `900 ${Math.round(220 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.fillStyle = '#ffffff';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('-14', thirdW + thirdW / 2, halfH + halfH / 2 - 15 * s);
+
+    // Name: Bino
+    g.font = `800 ${Math.round(54 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.textAlign = 'left';
+    g.textBaseline = 'alphabetic';
+    g.fillText('Bino', thirdW + 55 * s, h - 45 * s);
+  }
+
+  // 5. BOTTOM-RIGHT: Lú (-3) — Gradient Xanh Lơ / Cyan Teal
+  {
+    const grad5 = g.createLinearGradient(thirdW * 2, halfH, w, h);
+    grad5.addColorStop(0, '#0d9488');
+    grad5.addColorStop(0.5, '#0f766e');
+    grad5.addColorStop(1, '#0e7490');
+    g.fillStyle = grad5;
+    g.fillRect(thirdW * 2, halfH, thirdW + 2, halfH);
+
+    // Big Score: -3
+    g.font = `900 ${Math.round(220 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.fillStyle = '#ffffff';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText('-3', thirdW * 2 + thirdW / 2, halfH + halfH / 2 - 15 * s);
+
+    // Name: Lú
+    g.font = `800 ${Math.round(54 * s)}px "Be Vietnam Pro", sans-serif`;
+    g.textAlign = 'left';
+    g.textBaseline = 'alphabetic';
+    g.fillText('Lú', thirdW * 2 + 55 * s, h - 45 * s);
+  }
+
+  // Grid Separator Lines
+  g.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+  g.lineWidth = Math.max(1, 3 * s);
+
+  // Horizontal line
+  g.beginPath();
+  g.moveTo(0, halfH);
+  g.lineTo(w, halfH);
+  g.stroke();
+
+  // Vertical line top
+  g.beginPath();
+  g.moveTo(halfW, 0);
+  g.lineTo(halfW, halfH);
+  g.stroke();
+
+  // Vertical lines bottom
+  g.beginPath();
+  g.moveTo(thirdW, halfH);
+  g.lineTo(thirdW, h);
+  g.moveTo(thirdW * 2, halfH);
+  g.lineTo(thirdW * 2, h);
+  g.stroke();
+
+  // Outer border viền kim loại vàng
+  g.strokeStyle = 'rgba(212, 175, 55, 0.75)';
+  g.lineWidth = Math.max(2, 6 * s);
+  g.strokeRect(3 * s, 3 * s, w - 6 * s, h - 6 * s);
+
+  return canvas;
+}
 
 function buildScreen(scene) {
   const group = new THREE.Group();
   group.position.set(0, 0, SCREEN_Z);
   scene.add(group);
 
-  // Kích thước chuẩn theo tỉ lệ 1024:472 của hình ảnh bảng điểm
-  const SCORE_W = 10.6;
-  const SCORE_H = (SCORE_W * 472) / 1024; // ~ 4.88
+  // Tỉ lệ chuẩn 2:1 (10.4m x 5.2m)
+  const SCORE_W = 10.4;
+  const SCORE_H = 5.2;
 
-  // Khung viền kim loại đen mạ vàng bao bọc bảng điểm
+  // 1. Khung kim loại lùi về phía sau (z = -0.15)
   const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(11.4, SCORE_H + 2.2, 0.4),
-    new THREE.MeshStandardMaterial({ color: '#090d14', roughness: 0.4, metalness: 0.4 }),
+    new THREE.BoxGeometry(11.2, SCORE_H + 2.0, 0.25),
+    new THREE.MeshStandardMaterial({ color: '#090d14', roughness: 0.5, metalness: 0.3 }),
   );
-  frame.position.set(0, 6.2, -0.3);
+  frame.position.set(0, 6.2, -0.15);
   group.add(frame);
 
-  // Thanh tiêu đề trên đỉnh bảng
-  const headerTex = textCanvas(1024, 160, (g, w, h) => {
+  // 2. Viền kim loại mạ vàng (z = 0.0, mặt trước ở z = 0.02)
+  const borderMat = new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.9, roughness: 0.2 });
+  const borderBox = new THREE.Mesh(new THREE.BoxGeometry(SCORE_W + 0.16, SCORE_H + 0.16, 0.04), borderMat);
+  borderBox.position.set(0, 5.5, 0.0);
+  group.add(borderBox);
+
+  // 3. Thanh tiêu đề trên đỉnh bảng (z = 0.04)
+  const headerTex = textCanvas(1024, 140, (g, w, h) => {
     g.fillStyle = '#0f172a';
     g.fillRect(0, 0, w, h);
     g.fillStyle = '#d4af37';
-    g.fillRect(0, 0, w, 10);
-    g.fillRect(0, h - 10, w, 10);
+    g.fillRect(0, 0, w, 8);
+    g.fillRect(0, h - 8, w, 8);
 
     g.fillStyle = '#d4af37';
     g.font = '700 24px "Be Vietnam Pro", sans-serif';
     g.textAlign = 'center';
     g.letterSpacing = '4px';
-    g.fillText('OFFICIAL SCORECARD', w / 2, 45);
+    g.fillText('OFFICIAL SCORECARD', w / 2, 40);
 
     g.fillStyle = '#ffffff';
-    g.font = '900 48px "Bitter", Georgia, serif';
+    g.font = '900 46px "Bitter", Georgia, serif';
     g.letterSpacing = '3px';
-    g.fillText('🏆 RACE 27 GIA ĐÌNH 🎱', w / 2, 105);
+    g.fillText('🏆 RACE 27 GIA ĐÌNH 🎱', w / 2, 95);
   });
-  const headerMesh = new THREE.Mesh(new THREE.PlaneGeometry(10.6, 1.4), new THREE.MeshBasicMaterial({ map: headerTex }));
-  headerMesh.position.set(0, 8.85, 0.05);
+  const headerMesh = new THREE.Mesh(new THREE.PlaneGeometry(SCORE_W, 1.2), new THREE.MeshBasicMaterial({ map: headerTex }));
+  headerMesh.position.set(0, 8.6, 0.04);
   group.add(headerMesh);
 
-  // Tải hình ảnh bảng điểm thật
-  const loader = new THREE.TextureLoader();
-  const scoreTexture = loader.load(SCOREBOARD.image || '/images/scoreboard.jpg');
+  // 4. Tạo Bảng tỉ số bằng Canvas Code (độ phân giải cao 2048x1024, chuẩn tỉ lệ 2:1)
+  const scoreCanvas = drawScoreboardCanvas(2048, 1024);
+  const scoreTexture = new THREE.CanvasTexture(scoreCanvas);
   scoreTexture.colorSpace = THREE.SRGBColorSpace;
-  scoreTexture.minFilter = THREE.LinearMipmapLinearFilter;
-  scoreTexture.anisotropy = 8;
+  scoreTexture.minFilter = THREE.LinearFilter;
+  scoreTexture.magFilter = THREE.LinearFilter;
+  scoreTexture.generateMipmaps = false;
 
-  // Mặt hiển thị hình ảnh bảng điểm
+  // Mặt hiển thị bảng điểm (z = 0.04, phát sáng tự thân không cần PointLight gây chói loá)
   const scoreMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(SCORE_W, SCORE_H),
     new THREE.MeshBasicMaterial({ map: scoreTexture }),
   );
-  scoreMesh.position.set(0, 5.5, 0.05);
+  scoreMesh.position.set(0, 5.5, 0.04);
   group.add(scoreMesh);
 
-  // Viền vàng kim loại viền sát hình ảnh
-  const borderMat = new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.9, roughness: 0.2 });
-  const borderBox = new THREE.Mesh(new THREE.BoxGeometry(SCORE_W + 0.16, SCORE_H + 0.16, 0.08), borderMat);
-  borderBox.position.set(0, 5.5, 0.01);
-  group.add(borderBox);
-
-  // Ánh sáng dịu nhẹ rọi sáng bảng điểm
-  const glow = new THREE.PointLight('#38bdf8', 16, 18, 1.6);
-  glow.position.set(0, 6.2, 3.0);
-  group.add(glow);
-
   return {
+    scoreCanvas,
     dispose() {
       scoreTexture.dispose();
       headerMesh.material.map.dispose();
@@ -521,17 +766,18 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     return node;
   }
 
-  // Xem chi tiết Bảng tỉ số Race 27 Gia Đình
+  // Xem chi tiết Bảng tỉ số Race 27 Gia Đình (Vẽ trực tiếp 100% bằng Canvas Code)
   scoreBtn.addEventListener('click', () => {
+    const canvas = drawScoreboardCanvas(1200, 600);
     const img = el('img', {
-      src: SCOREBOARD.image || '/images/scoreboard.jpg',
+      src: canvas.toDataURL('image/png'),
       alt: 'Bảng tỉ số Race 27 Gia Đình',
-      style: 'width:100%;border-radius:10px;box-shadow:0 6px 25px rgba(0,0,0,0.7);display:block;margin-bottom:12px;border:1px solid rgba(212,175,55,0.4)',
+      style: 'width:100%;border-radius:10px;box-shadow:0 6px 25px rgba(0,0,0,0.7);display:block;margin-bottom:12px;border:1.5px solid rgba(212,175,55,0.4)',
     });
     const stats = el(
       'div',
       { style: 'font-size:13.5px;color:var(--gold);text-align:center;font-weight:700;line-height:1.6' },
-      '🏆 KẾT QUẢ ĐANG DẪN ĐẦU — RACE 27 GIA ĐÌNH',
+      '🏆 KẾT QUẢ HIỆN TẠI — RACE 27 GIA ĐÌNH',
       el('div', { style: 'font-size:12.5px;color:var(--ink-soft);font-weight:500;margin-top:4px' }, 'James (-9) • Khá (21) • Damy (5) • Bino (-14) • Lú (-3)'),
     );
     card('📊 Bảng Tỉ Số Race 27 Gia Đình', el('div', {}, img, stats), { closeLabel: 'Đóng' });
