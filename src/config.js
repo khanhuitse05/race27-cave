@@ -1,4 +1,4 @@
-// Cấu hình thương hiệu và nội dung cho Đấu trường Rasson Billiards
+// Brand and content configuration for Rasson Billiards Arena
 
 const base = import.meta.env.BASE_URL || './';
 
@@ -13,8 +13,8 @@ export const BRAND = {
   disclaimer: 'Không gian 3D giao lưu cộng đồng cơ thủ Rasson Billiards. Phi thương mại.',
   roomName: 'Đấu trường Rasson Arena VIP',
   tableModel: 'Rasson Ox Official Tournament Table',
-  // Màu sắc thương hiệu
-  cloth: '#0d5ea6', // Vải nỉ Simonis 860 Electric Blue chính hãng
+  // Brand color palette
+  cloth: '#0d5ea6', // Authentic Simonis 860 Electric Blue cloth
   clothOptions: [
     { name: 'Simonis Blue', color: '#0d5ea6' },
     { name: 'Tournament Green', color: '#10643d' },
@@ -22,16 +22,16 @@ export const BRAND = {
     { name: 'Slate Grey', color: '#334155' },
     { name: 'Crimson Red', color: '#881337' },
   ],
-  // Trang phục cơ thủ thi đấu chuyên nghiệp
+  // Professional player outfit colors
   jersey: {
-    body: '#111827', // Áo polo đen thể thao chuyên nghiệp
-    trim: '#d4af37', // Viền vàng kim loại sang trọng
-    accent: '#0d5ea6', // Điểm nhấn xanh Simonis
+    body: '#111827', // Black athletic polo shirt
+    trim: '#d4af37', // Luxurious gold metallic trim
+    accent: '#0d5ea6', // Simonis blue accent
     number: '#ffffff',
   },
 };
 
-// Bảng màu 16 bi tiêu chuẩn quốc tế (0 = bi cái, 1-8 bi đặc, 9-15 bi khoang)
+// International standard 16-ball color scheme (0 = cue ball, 1-8 solids, 9-15 stripes)
 export const BALL_CONFIG = [
   { no: 0, name: 'Bi Cái (Cue Ball)', color: '#f8fafc', stripe: false, darkText: true },
   { no: 1, name: 'Bi 1 (Vàng)', color: '#f59e0b', stripe: false, darkText: true },
@@ -58,7 +58,7 @@ export const CUE_STYLES = [
   { id: 'dragon', name: 'Crimson Dragon', shaft: '#262626', wrap: '#991b1b', ring: '#f87171' },
 ];
 
-// Bảng điểm giải đấu Race 27 Gia Đình
+// Official tournament scorecard for Race 27 Gia Dinh
 export const SCOREBOARD = {
   title: 'RACE 27 GIA ĐÌNH',
   image: `${base}images/scoreboard.jpg`,
@@ -72,7 +72,7 @@ export const SCOREBOARD = {
   ],
 };
 
-// Chân dung các huyền thoại làng Pool thế giới và Việt Nam
+// World and Vietnamese pool legends hall of fame
 export const LEGENDS = [
   { name: 'Efren Reyes', title: 'The Magician', country: '🇵🇭' },
   { name: 'Dương Quốc Hoàng', title: 'Hoàng Sao', country: '🇻🇳' },

@@ -17,17 +17,17 @@ const SCREEN_Z = -20;
 const TUTORIAL_KEY = 'rasson.tutorial.cue';
 
 // ---------------------------------------------------------------------------
-// Kiến trúc Đấu trường ngầm Rasson Billiards VIP
+// Underground Rasson Billiards VIP Arena Architecture
 // ---------------------------------------------------------------------------
 
 function buildArena(scene, audio) {
   scene.background = new THREE.Color('#0b0e14');
   scene.fog = new THREE.Fog('#0b0e14', 20, 48);
 
-  // Ánh sáng môi trường dịu nhẹ, sang trọng
+  // Soft ambient lighting
   scene.add(new THREE.HemisphereLight('#38bdf8', '#1e293b', 2.0));
 
-  // Sàn đá phiến đen bóng phối thảm Simonis
+  // Polished black slate floor with Simonis carpet
   const floor = new THREE.Mesh(
     new THREE.CircleGeometry(28, 64),
     new THREE.MeshStandardMaterial({ color: '#141822', roughness: 0.7, metalness: 0.15 }),
@@ -36,7 +36,7 @@ function buildArena(scene, audio) {
   floor.receiveShadow = true;
   scene.add(floor);
 
-  // Vòm trần hang đá ngầm
+  // Cavern ceiling dome
   const dome = new THREE.Mesh(rockGeometry(28, 15, 3, 0.08), rockMaterial('#222834'));
   dome.material.side = THREE.BackSide;
   dome.scale.y = 0.58;
@@ -44,7 +44,7 @@ function buildArena(scene, audio) {
 
   const rand = rng(77);
 
-  // Thạch nhũ đá tự nhiên treo trên vòm
+  // Hanging stalactites on ceiling
   const stal = new THREE.InstancedMesh(new THREE.ConeGeometry(0.35, 2.4, 6), rockMaterial('#2c3444'), 75);
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0));
@@ -58,7 +58,7 @@ function buildArena(scene, audio) {
   }
   scene.add(stal);
 
-  // Khán đài ngồi xem thi đấu hình vòng cung quanh bàn Rasson trung tâm
+  // Tiered spectator seating around central Rasson table
   const benchMat = new THREE.MeshStandardMaterial({ color: '#1c202a', roughness: 0.85, flatShading: true });
   const rows = [
     { r: 4.8, h: 0.38 },
@@ -71,7 +71,7 @@ function buildArena(scene, audio) {
     let k = 0;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
-      // Chừa lối nhìn về màn hình lớn phía -z
+      // Clear line of sight toward the main screen at -z
       if (Math.abs(Math.atan2(Math.sin(a + Math.PI / 2), Math.cos(a + Math.PI / 2))) < 0.48) continue;
       m4.compose(
         new THREE.Vector3(Math.cos(a) * r, h / 2, Math.sin(a) * r),
@@ -85,7 +85,7 @@ function buildArena(scene, audio) {
     scene.add(benches);
   }
 
-  // Khối đá viền chân tường
+  // Perimeter rock outcroppings
   const rockMat = rockMaterial('#181d28');
   for (let i = 0; i < 42; i++) {
     const a = rand() * Math.PI * 2;
@@ -96,11 +96,11 @@ function buildArena(scene, audio) {
     scene.add(m);
   }
 
-  // BÀN BIDA RASSON OX ĐẶT TẠI TÂM ĐẤU TRƯỜNG
+  // Central Rasson Ox billiard table
   const table = createRassonBilliardsTable(audio);
   scene.add(table.group);
 
-  // Đèn tường LED hiện đại & Poster các Huyền thoại Bida thế giới
+  // Modern LED wall sconces & World Legends Hall of Fame posters
   const arenaTorches = [];
   const wallR = 23.5;
 
@@ -120,7 +120,7 @@ function buildArena(scene, audio) {
     roughness: 0.25,
   });
 
-  // Treo poster chân dung các cơ thủ huyền thoại
+  // World pool legends poster placement
   for (let i = 0; i < LEGENDS.length; i++) {
     const side = i % 2 ? 1 : -1;
     const idx = Math.floor(i / 2);
@@ -128,7 +128,7 @@ function buildArena(scene, audio) {
     addLegendPoster(scene, LEGENDS[i], a, wallR);
   }
 
-  // Đèn hắt LED và cờ / banner Logo Bearbrick Rasson xung quanh tường
+  // Wall LED fixtures and Bearbrick logo banners
   for (let i = 0; i < 10; i++) {
     const a = (i / 10) * Math.PI * 2 + 0.31;
     const torch = createArenaTorch();
@@ -156,33 +156,33 @@ function buildArena(scene, audio) {
 
 function addLegendPoster(scene, legend, angle, r) {
   const tex = textCanvas(300, 400, (g, w, h) => {
-    // Khung poster kim loại cao cấp
+    // Metallic poster frame background
     const grad = g.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, '#1c2438');
     grad.addColorStop(1, '#0b0f19');
     g.fillStyle = grad;
     g.fillRect(0, 0, w, h);
 
-    // Viền vàng kim loại
+    // Gold metallic border
     g.strokeStyle = '#d4af37';
     g.lineWidth = 6;
     g.strokeRect(6, 6, w - 12, h - 12);
 
-    // Vùng ảnh / đồ hoạ cơ thủ
+    // Player graphic backdrop
     const innerGrad = g.createRadialGradient(w / 2, 140, 20, w / 2, 140, 110);
     innerGrad.addColorStop(0, '#2563eb');
     innerGrad.addColorStop(1, '#0f172a');
     g.fillStyle = innerGrad;
     g.fillRect(16, 16, w - 32, 240);
 
-    // Biểu tượng bóng cơ thủ & gậy cơ
+    // Cue and player silhouette
     g.fillStyle = 'rgba(255, 255, 255, 0.22)';
     g.beginPath();
     g.arc(w / 2, 115, 46, 0, Math.PI * 2);
     g.fill();
     g.fillRect(w / 2 - 70, 170, 140, 86);
 
-    // Gậy cơ chéo
+    // Diagonal cue stick
     g.strokeStyle = '#d4af37';
     g.lineWidth = 4;
     g.beginPath();
@@ -190,18 +190,18 @@ function addLegendPoster(scene, legend, angle, r) {
     g.lineTo(w - 35, 45);
     g.stroke();
 
-    // Quốc kỳ & Nickname
+    // Country flag & Nickname
     g.fillStyle = '#38bdf8';
     g.font = '700 22px "Be Vietnam Pro", sans-serif';
     g.textAlign = 'center';
     g.fillText(`${legend.country || '🎱'} "${legend.title}"`, w / 2, 295);
 
-    // Tên cơ thủ
+    // Player name
     g.fillStyle = '#ffffff';
     g.font = '900 26px "Bitter", Georgia, serif';
     g.fillText(legend.name, w / 2, 345);
 
-    // Dòng chữ Hall of Fame
+    // Hall of Fame caption
     g.fillStyle = '#d4af37';
     g.font = '700 13px "Be Vietnam Pro", sans-serif';
     g.letterSpacing = '2px';
@@ -219,7 +219,7 @@ function addLegendPoster(scene, legend, angle, r) {
 }
 
 // ---------------------------------------------------------------------------
-// Màn hình Lớn: BẢNG TỈ SỐ RACE 27 GIA ĐÌNH (Vẽ 100% bằng Canvas Code sắc nét)
+// Main Jumbotron: Race 27 Scoreboard (100% code-rendered canvas)
 // ---------------------------------------------------------------------------
 
 function drawRoundedRect(g, x, y, width, height, radius) {
@@ -252,7 +252,7 @@ export function drawScoreboardCanvas(w = 2048, h = 1024) {
   const halfW = w / 2;
   const thirdW = w / 3;
 
-  // 1. TOP-LEFT: James (-9) — Gradient Tím / Magenta
+  // 1. TOP-LEFT: James (-9) — Purple/Magenta gradient
   {
     const grad1 = g.createLinearGradient(0, 0, halfW, halfH);
     grad1.addColorStop(0, '#9333ea');
@@ -310,7 +310,7 @@ export function drawScoreboardCanvas(w = 2048, h = 1024) {
     g.fillText('-1', (halfW - 105 + 32.5) * s, (halfH - 76 + 22) * s);
   }
 
-  // 2. TOP-RIGHT: Khá (21) — Gradient Xanh Dương Điện (Electric Blue)
+  // 2. TOP-RIGHT: Kha (21) — Electric Blue gradient
   {
     const grad2 = g.createLinearGradient(halfW, 0, w, halfH);
     grad2.addColorStop(0, '#0284c7');
@@ -345,7 +345,7 @@ export function drawScoreboardCanvas(w = 2048, h = 1024) {
     g.textBaseline = 'middle';
     g.fillText('21', halfW + halfW / 2, halfH / 2 - 15 * s);
 
-    // Name: Khá
+    // Player name: Kha
     g.font = `800 ${Math.round(54 * s)}px "Be Vietnam Pro", sans-serif`;
     g.textAlign = 'left';
     g.textBaseline = 'alphabetic';
@@ -362,7 +362,7 @@ export function drawScoreboardCanvas(w = 2048, h = 1024) {
     g.fillText('+1', (w - 105 + 32.5) * s, (halfH - 76 + 22) * s);
   }
 
-  // 3. BOTTOM-LEFT: Damy (5) — Gradient Xanh Lá (Emerald Green)
+  // 3. BOTTOM-LEFT: Damy (5) — Emerald Green gradient
   {
     const grad3 = g.createLinearGradient(0, halfH, thirdW, h);
     grad3.addColorStop(0, '#16a34a');
@@ -392,7 +392,7 @@ export function drawScoreboardCanvas(w = 2048, h = 1024) {
     g.fillText('Damy', 55 * s, h - 45 * s);
   }
 
-  // 4. BOTTOM-MIDDLE: Bino (-14) — Gradient Nâu Đồng / Bronze
+  // 4. BOTTOM-MIDDLE: Bino (-14) — Bronze/Brown gradient
   {
     const grad4 = g.createLinearGradient(thirdW, halfH, thirdW * 2, h);
     grad4.addColorStop(0, '#854d0e');
@@ -415,7 +415,7 @@ export function drawScoreboardCanvas(w = 2048, h = 1024) {
     g.fillText('Bino', thirdW + 55 * s, h - 45 * s);
   }
 
-  // 5. BOTTOM-RIGHT: Lú (-3) — Gradient Xanh Lơ / Cyan Teal
+  // 5. BOTTOM-RIGHT: Lu (-3) — Cyan/Teal gradient
   {
     const grad5 = g.createLinearGradient(thirdW * 2, halfH, w, h);
     grad5.addColorStop(0, '#0d9488');
@@ -431,7 +431,7 @@ export function drawScoreboardCanvas(w = 2048, h = 1024) {
     g.textBaseline = 'middle';
     g.fillText('-3', thirdW * 2 + thirdW / 2, halfH + halfH / 2 - 15 * s);
 
-    // Name: Lú
+    // Player name: Lu
     g.font = `800 ${Math.round(54 * s)}px "Be Vietnam Pro", sans-serif`;
     g.textAlign = 'left';
     g.textBaseline = 'alphabetic';
@@ -462,7 +462,7 @@ export function drawScoreboardCanvas(w = 2048, h = 1024) {
   g.lineTo(thirdW * 2, h);
   g.stroke();
 
-  // Outer border viền kim loại vàng
+  // Outer gold metallic border
   g.strokeStyle = 'rgba(212, 175, 55, 0.75)';
   g.lineWidth = Math.max(2, 6 * s);
   g.strokeRect(3 * s, 3 * s, w - 6 * s, h - 6 * s);
@@ -475,11 +475,11 @@ function buildScreen(scene) {
   group.position.set(0, 0, SCREEN_Z);
   scene.add(group);
 
-  // Tỉ lệ chuẩn 2:1 (10.4m x 5.2m)
+  // Standard 2:1 aspect ratio (10.4m x 5.2m)
   const SCORE_W = 10.4;
   const SCORE_H = 5.2;
 
-  // 1. Khung kim loại lùi về phía sau (z = -0.15)
+  // 1. Rear metal frame (z = -0.15)
   const frame = new THREE.Mesh(
     new THREE.BoxGeometry(11.2, SCORE_H + 2.0, 0.25),
     new THREE.MeshStandardMaterial({ color: '#090d14', roughness: 0.5, metalness: 0.3 }),
@@ -487,13 +487,13 @@ function buildScreen(scene) {
   frame.position.set(0, 6.2, -0.15);
   group.add(frame);
 
-  // 2. Viền kim loại mạ vàng (z = 0.0, mặt trước ở z = 0.02)
+  // 2. Gold metallic trim border (z = 0.0, front face at z = 0.02)
   const borderMat = new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.9, roughness: 0.2 });
   const borderBox = new THREE.Mesh(new THREE.BoxGeometry(SCORE_W + 0.16, SCORE_H + 0.16, 0.04), borderMat);
   borderBox.position.set(0, 5.5, 0.0);
   group.add(borderBox);
 
-  // 3. Thanh tiêu đề trên đỉnh bảng (z = 0.04)
+  // 3. Header title plaque (z = 0.04)
   const headerTex = textCanvas(1024, 140, (g, w, h) => {
     g.fillStyle = '#0f172a';
     g.fillRect(0, 0, w, h);
@@ -516,7 +516,7 @@ function buildScreen(scene) {
   headerMesh.position.set(0, 8.6, 0.04);
   group.add(headerMesh);
 
-  // 4. Tạo Bảng tỉ số bằng Canvas Code (độ phân giải cao 2048x1024, chuẩn tỉ lệ 2:1)
+  // 4. Canvas-drawn scoreboard texture (2048x1024, 2:1 ratio)
   const scoreCanvas = drawScoreboardCanvas(2048, 1024);
   const scoreTexture = new THREE.CanvasTexture(scoreCanvas);
   scoreTexture.colorSpace = THREE.SRGBColorSpace;
@@ -524,7 +524,7 @@ function buildScreen(scene) {
   scoreTexture.magFilter = THREE.LinearFilter;
   scoreTexture.generateMipmaps = false;
 
-  // Mặt hiển thị bảng điểm (z = 0.04, phát sáng tự thân không cần PointLight gây chói loá)
+  // Scoreboard screen mesh (z = 0.04, self-illuminated emissive material)
   const scoreMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(SCORE_W, SCORE_H),
     new THREE.MeshBasicMaterial({ map: scoreTexture }),
@@ -542,7 +542,7 @@ function buildScreen(scene) {
 }
 
 // ---------------------------------------------------------------------------
-// Hiệu ứng Pháo hoa & Bụi phấn vàng ăn mừng
+// Victory Fireworks & Golden Chalk Confetti Effects
 // ---------------------------------------------------------------------------
 
 function createBilliardsConfetti(scene) {
@@ -597,12 +597,12 @@ function capture(node, pointerId) {
   try {
     node.setPointerCapture(pointerId);
   } catch {
-    // bỏ qua
+    // Ignore if not supported
   }
 }
 
 // ---------------------------------------------------------------------------
-// Giao diện HUD của Đấu trường Rasson Billiards
+// Rasson Billiards Arena HUD Interface
 // ---------------------------------------------------------------------------
 
 function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
@@ -630,7 +630,7 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     ),
   );
 
-  // Khung Chat
+  // Chat panel
   const log = el('div', { className: 'chat-log', role: 'log' });
   const input = el('input', { placeholder: 'Nhấn Enter để gửi tin nhắn đến anh em cơ thủ…', maxLength: 200 });
   const hideChat = el('button', { className: 'pill', type: 'button' }, 'Ẩn');
@@ -640,7 +640,7 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     hideChat.textContent = chat.classList.contains('collapsed') ? 'Hiện' : 'Ẩn';
   });
 
-  // Thanh Biểu tượng Cảm xúc (Emote Bar)
+  // Emote Bar
   const EMOTES = ['🎱', '🏆', '🎯', '🔥', '👏', '🍺'];
   const emoteBtns = EMOTES.map((em) => {
     const b = el('button', { className: 'emote-btn', type: 'button', 'aria-label': em }, em);
@@ -648,13 +648,13 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
   });
   const emoteBar = el('div', { className: 'emote-bar' }, ...emoteBtns);
 
-  // Nút Hành động & Bảng phím
+  // Action Buttons & Shortcuts
   const celebrate = el('button', { className: 'btn-celebrate', type: 'button' }, '🎉 Ăn Mừng Cú Đánh', kbd('G'));
   const keysBtn = el('button', { className: 'pill btn-keys', type: 'button' }, 'Phím tắt (H)');
   const hint = el('div', { className: 'hint-bottom' }, 'Nhấp chuột vào cảnh để xoay góc nhìn • Cuộn chuột để zoom');
   const toast = el('div', { className: 'toast' });
 
-  // Nút Tương tác Bàn Bida trung tâm
+  // Central Billiards Table Interaction Panel
   const breakBtn = el('button', { className: 'btn-table-action break-btn', type: 'button' }, '🎱 Phá Bi Rasson', kbd('Space'));
   const rackBtn = el('button', { className: 'btn-table-action rack-btn', type: 'button' }, '🔄 Xếp Lại Bi', kbd('R'));
   const tableActions = el('div', { className: 'table-actions-panel' }, breakBtn, rackBtn);
@@ -665,7 +665,7 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
 
   const strikeHint = el('div', { className: 'strike-hint' }, '🎯 Nhấn F để Thách đấu Chọc cơ');
 
-  // Điều khiển cảm ứng trên điện thoại / máy tính bảng
+  // Touch controls for mobile / tablet devices
   const knob = el('div', { className: 'joy-knob' });
   const joystick = el('div', { className: 'joystick', 'aria-label': 'Cần gạt di chuyển' }, knob);
   const strikeTouch = el('button', { className: 'btn-strike', type: 'button', 'aria-label': 'Đấu cơ' }, '🎯');
@@ -766,7 +766,7 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     return node;
   }
 
-  // Xem chi tiết Bảng tỉ số Race 27 Gia Đình (Vẽ trực tiếp 100% bằng Canvas Code)
+  // View Race 27 Gia Dinh scorecard modal (Rendered 100% via Canvas Code)
   scoreBtn.addEventListener('click', () => {
     const canvas = drawScoreboardCanvas(1200, 600);
     const img = el('img', {
@@ -846,7 +846,7 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
 }
 
 // ---------------------------------------------------------------------------
-// Gắn kết Màn chơi trong Đấu trường ngầm Rasson Billiards
+// Underground Rasson Billiards VIP Arena Stage Mounting
 // ---------------------------------------------------------------------------
 
 export function mountCave(app, { profile, onLeave }) {
@@ -895,7 +895,7 @@ export function mountCave(app, { profile, onLeave }) {
     onCameraToggle: toggleCameraMode,
   });
 
-  // --- Người chơi -----------------------------------------------------------
+  // --- Players --------------------------------------------------------------
   /** @type {Map<number, any>} */
   const others = new Map();
   let myId = null;
@@ -965,7 +965,7 @@ export function mountCave(app, { profile, onLeave }) {
     setHealth(p.id, p.hp ?? MAX_HP, p.ghostLeft ?? 0);
   }
 
-  // --- Máu / Thần cơ (Ma) ----------------------------------------------------
+  // --- Health / Ghost State -------------------------------------------------
   let myGhostUntil = 0;
   function setHealth(id, hp, ghostLeft) {
     const ghost = ghostLeft > 0;
@@ -1002,7 +1002,7 @@ export function mountCave(app, { profile, onLeave }) {
     return id === myId ? profile.name : others.get(id)?.name ?? 'Cơ thủ';
   }
 
-  // Biểu tượng cảm xúc
+  // Emotes
   hud.emoteBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const emoji = btn.textContent;
@@ -1011,7 +1011,7 @@ export function mountCave(app, { profile, onLeave }) {
     });
   });
 
-  // --- Mạng WebSocket --------------------------------------------------------
+  // --- WebSocket Network ----------------------------------------------------
   const net = connect(profile, {
     status(s) {
       if (s === 'offline') hud.showToast('⚠️ Mất kết nối, đang tự động kết nối lại…');
@@ -1104,14 +1104,14 @@ export function mountCave(app, { profile, onLeave }) {
     },
   });
 
-  // --- Hướng dẫn lần đầu ----------------------------------------------------
+  // --- First-time Tutorial --------------------------------------------------
   function maybeTutorial() {
     let seen = false;
     try {
       seen = localStorage.getItem(TUTORIAL_KEY) === '1';
       localStorage.setItem(TUTORIAL_KEY, '1');
     } catch {
-      // bỏ qua
+      // ignore
     }
     if (seen) return;
     const p = el(
@@ -1126,7 +1126,7 @@ export function mountCave(app, { profile, onLeave }) {
     hud.card('🎱 Chào mừng đến với Rasson Billiards!', p);
   }
 
-  // --- Âm thanh -------------------------------------------------------------
+  // --- Audio ----------------------------------------------------------------
   function toggleMute() {
     const m = audio.toggleMute();
     hud.muteBtn.textContent = m ? '🔇' : '🔊';
@@ -1151,7 +1151,7 @@ export function mountCave(app, { profile, onLeave }) {
     }
   });
 
-  // --- Điều khiển -----------------------------------------------------------
+  // --- Controls -------------------------------------------------------------
   const keys = new Set();
   let camYaw = 0;
   let camPitch = 0.35;
@@ -1237,7 +1237,7 @@ export function mountCave(app, { profile, onLeave }) {
     camPitch = THREE.MathUtils.clamp(camPitch + e.movementY * 0.0025, -0.15, 1.15);
   });
 
-  // Phóng to thu nhỏ bằng chuột
+  // Mouse wheel zoom
   canvas.addEventListener(
     'wheel',
     (e) => {
@@ -1273,7 +1273,7 @@ export function mountCave(app, { profile, onLeave }) {
     return best;
   }
 
-  // --- Vòng lặp Render & Cập nhật --------------------------------------------
+  // --- Render & Update Loop -------------------------------------------------
   function resize() {
     const w = stage.clientWidth;
     const h = stage.clientHeight;
@@ -1300,7 +1300,7 @@ export function mountCave(app, { profile, onLeave }) {
     last = now;
     t += dt;
 
-    // Di chuyển cơ thủ theo hướng camera
+    // Move player relative to camera direction
     const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - hud.joy.y;
     const s = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) + hud.joy.x;
     move.set(0, 0, 0);
@@ -1319,11 +1319,11 @@ export function mountCave(app, { profile, onLeave }) {
     me.pos.add(move).addScaledVector(me.knock, dt);
     me.knock.multiplyScalar(Math.max(0, 1 - dt * 6));
 
-    // Giới hạn biên đấu trường
+    // Arena perimeter boundary collision
     const r = Math.hypot(me.pos.x, me.pos.z);
     if (r > ARENA_RADIUS) me.pos.multiplyScalar(ARENA_RADIUS / r);
 
-    // Va chạm với bàn Bida Rasson (Hình chữ nhật giữa phòng)
+    // Central Rasson billiard table collision (rectangular bounds)
     const tableHalfL = 2.4;
     const tableHalfW = 1.4;
     if (Math.abs(me.pos.x) < tableHalfL && Math.abs(me.pos.z) < tableHalfW) {
@@ -1336,7 +1336,7 @@ export function mountCave(app, { profile, onLeave }) {
       }
     }
 
-    // Hiển thị nút tương tác bàn bida khi đứng gần
+    // Show table interaction controls when nearby
     const nearTable = r < TABLE_INTERACTION_RADIUS;
     hud.setTableActionsVisible(nearTable);
 
@@ -1345,7 +1345,7 @@ export function mountCave(app, { profile, onLeave }) {
     me.avatar.root.rotation.y = me.ry;
     me.avatar.update(dt, me.moving);
 
-    // Cập nhật người chơi khác
+    // Update remote players
     const k = 1 - Math.exp(-dt * 12);
     const target = strikeTarget();
     for (const o of others.values()) {
@@ -1364,7 +1364,7 @@ export function mountCave(app, { profile, onLeave }) {
     hud.strikeTouch.classList.toggle('ready', !!target);
     hud.setGhostCountdown(myGhostUntil ? Math.max(1, Math.ceil((myGhostUntil - now) / 1000)) : 0);
 
-    // Đồng bộ vị trí định kỳ 15 lần/giây
+    // Network position sync (~15 ticks/second)
     sendAcc += dt;
     if (sendAcc >= SEND_INTERVAL && myId) {
       sendAcc = 0;
@@ -1377,7 +1377,7 @@ export function mountCave(app, { profile, onLeave }) {
       }
     }
 
-    // Thiết lập Camera theo chế độ đã chọn
+    // Camera configuration by mode
     if (camMode === 0) {
       // 3rd Person Follow Camera
       camTarget.set(me.pos.x, 1.55, me.pos.z);
@@ -1394,7 +1394,7 @@ export function mountCave(app, { profile, onLeave }) {
       camera.position.y = Math.max(0.6, camera.position.y);
       camera.lookAt(camTarget);
     } else if (camMode === 1) {
-      // 1st Person Cueist Camera (Góc nhìn từ mắt cơ thủ)
+      // 1st Person Cueist Camera (Eye-level cueist view)
       camera.position.set(me.pos.x, 1.6, me.pos.z);
       const lookDist = 10;
       camera.lookAt(
@@ -1403,13 +1403,13 @@ export function mountCave(app, { profile, onLeave }) {
         me.pos.z - Math.cos(camYaw) * lookDist,
       );
     } else if (camMode === 2) {
-      // Table Cam (Góc nhìn bao quát toàn bộ bàn bida Rasson)
+      // Table Cam (Overview of entire Rasson table)
       camTarget.set(0, 1.1, 0);
       camera.position.set(Math.sin(camYaw) * 7.5, 4.8, Math.cos(camYaw) * 7.5);
       camera.lookAt(camTarget);
     }
 
-    // Cập nhật vật lý bi bida lăn trên bàn
+    // Update rolling billiard ball physics
     table.update(dt);
     torches.forEach((tc) => tc.update(t));
     confetti.update(dt);

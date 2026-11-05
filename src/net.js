@@ -1,6 +1,6 @@
 /**
- * Quản lý kết nối WebSocket thời gian thực tới server Rasson Billiards,
- * tự động khôi phục kết nối khi rớt mạng hoặc máy chủ Render thức dậy.
+ * Manages real-time WebSocket connection to the Rasson Billiards server,
+ * with automatic reconnection upon disconnection or server wakeup.
  */
 export function connect(profile, handlers) {
   let ws = null;

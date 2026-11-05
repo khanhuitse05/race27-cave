@@ -4,7 +4,7 @@ import { BALL_CONFIG, BRAND, CUE_STYLES } from './config.js';
 const SKIN = '#e6b998';
 
 /**
- * Tạo texture áo thi đấu polo cơ thủ chuyên nghiệp có logo Rasson và bi số sau lưng
+ * Creates professional polo jersey texture with Rasson emblem and back ball number.
  */
 function poloTexture(ballNumber = 8, poloColor = BRAND.jersey.body) {
   const c = document.createElement('canvas');
@@ -12,15 +12,15 @@ function poloTexture(ballNumber = 8, poloColor = BRAND.jersey.body) {
   c.height = 256;
   const g = c.getContext('2d');
 
-  // Nền áo polo
+  // Polo body base
   g.fillStyle = poloColor;
   g.fillRect(0, 0, c.width, c.height);
 
-  // Viền cổ áo & nẹp áo
+  // Collar and placket trim
   g.fillStyle = BRAND.jersey.trim;
   g.fillRect(0, 0, c.width, 16);
 
-  // Mặt trước (UV u ≈ 0..0.25 và 0.75..1): Cổ áo chữ V và logo Rasson ở ngực
+  // Front side (UV u ≈ 0..0.25 and 0.75..1): V-neck collar & chest logo
   g.fillStyle = '#ffffff';
   g.beginPath();
   g.moveTo(c.width * 0.08, 0);
@@ -29,7 +29,7 @@ function poloTexture(ballNumber = 8, poloColor = BRAND.jersey.body) {
   g.closePath();
   g.fill();
 
-  // Huy hiệu logo Rasson ở ngực trái
+  // Left chest Rasson badge
   g.fillStyle = BRAND.jersey.trim;
   g.beginPath();
   g.arc(c.width * 0.18, 72, 16, 0, Math.PI * 2);
@@ -40,7 +40,7 @@ function poloTexture(ballNumber = 8, poloColor = BRAND.jersey.body) {
   g.textBaseline = 'middle';
   g.fillText('R', c.width * 0.18, 73);
 
-  // Mặt sau (UV u ≈ 0.5 là lưng): Huy hiệu bi bida chứa số của cơ thủ
+  // Back side (UV u ≈ 0.5): Player number ball emblem
   if (ballNumber != null) {
     const num = Math.min(15, Math.max(0, ballNumber));
     const ballCfg = BALL_CONFIG[num] || BALL_CONFIG[8];
@@ -48,7 +48,7 @@ function poloTexture(ballNumber = 8, poloColor = BRAND.jersey.body) {
     const cy = 135;
     const r = 58;
 
-    // Vòng tròn bi bida sau lưng
+    // Back ball disc
     g.beginPath();
     g.arc(cx, cy, r + 4, 0, Math.PI * 2);
     g.fillStyle = 'rgba(0, 0, 0, 0.45)';
@@ -69,7 +69,7 @@ function poloTexture(ballNumber = 8, poloColor = BRAND.jersey.body) {
       g.fillRect(cx - r, cy - r, r * 2, r * 2);
     }
 
-    // Tâm trắng số bi
+    // White center spot for number
     g.beginPath();
     g.arc(cx, cy, r * 0.48, 0, Math.PI * 2);
     g.fillStyle = '#ffffff';
@@ -89,7 +89,7 @@ function poloTexture(ballNumber = 8, poloColor = BRAND.jersey.body) {
     }
     g.restore();
 
-    // Chữ RASSON PLAYER phía trên số
+    // RASSON PRO header text
     g.fillStyle = BRAND.jersey.trim;
     g.font = '700 16px "Be Vietnam Pro", sans-serif';
     g.textAlign = 'center';
@@ -104,13 +104,13 @@ function poloTexture(ballNumber = 8, poloColor = BRAND.jersey.body) {
 }
 
 /**
- * Tạo cây Cơ Bida 3D (Billiard Cue Stick) chuyên nghiệp
+ * Creates 3D professional billiard cue stick mesh.
  */
 function createCueMesh(styleId = 'carbon') {
   const cueGroup = new THREE.Group();
   const style = CUE_STYLES.find((s) => s.id === styleId) || CUE_STYLES[0];
 
-  // 1. Chuôi cơ (Butt): Gỗ hoặc carbon bọc da
+  // 1. Butt: Leather-wrapped wood or carbon
   const buttLen = 0.72;
   const buttGeo = new THREE.CylinderGeometry(0.016, 0.021, buttLen, 16);
   const buttMat = new THREE.MeshStandardMaterial({ color: style.wrap, roughness: 0.45, metalness: 0.1 });
@@ -119,7 +119,7 @@ function createCueMesh(styleId = 'carbon') {
   butt.castShadow = true;
   cueGroup.add(butt);
 
-  // Đế cao su chuôi (Bumper)
+  // Rubber bumper at butt end
   const bumper = new THREE.Mesh(
     new THREE.CylinderGeometry(0.019, 0.021, 0.025, 12),
     new THREE.MeshStandardMaterial({ color: '#09090b', roughness: 0.9 }),
@@ -127,7 +127,7 @@ function createCueMesh(styleId = 'carbon') {
   bumper.position.y = 0.012;
   cueGroup.add(bumper);
 
-  // Vòng ren kim loại vàng (Joint collar / Accent ring)
+  // Joint collar / Accent ring
   const ring = new THREE.Mesh(
     new THREE.CylinderGeometry(0.0165, 0.0165, 0.035, 16),
     new THREE.MeshStandardMaterial({ color: style.ring, metalness: 0.85, roughness: 0.2 }),
@@ -135,7 +135,7 @@ function createCueMesh(styleId = 'carbon') {
   ring.position.y = buttLen;
   cueGroup.add(ring);
 
-  // 2. Ngọn cơ (Shaft): Thon dần về đầu tẩy (Carbon hoặc gỗ phong sấy)
+  // 2. Shaft: Tapered carbon or Canadian maple
   const shaftLen = 0.78;
   const shaftGeo = new THREE.CylinderGeometry(0.0075, 0.015, shaftLen, 16);
   const shaftMat = new THREE.MeshStandardMaterial({ color: style.shaft, roughness: 0.25 });
@@ -144,7 +144,7 @@ function createCueMesh(styleId = 'carbon') {
   shaft.castShadow = true;
   cueGroup.add(shaft);
 
-  // 3. Phíp cơ (Ferrule): Nhựa tổng hợp trắng cao cấp
+  // 3. Ferrule: High-grade synthetic white ferrule
   const ferruleLen = 0.02;
   const ferrule = new THREE.Mesh(
     new THREE.CylinderGeometry(0.0075, 0.0077, ferruleLen, 12),
@@ -153,7 +153,7 @@ function createCueMesh(styleId = 'carbon') {
   ferrule.position.y = buttLen + shaftLen + ferruleLen / 2;
   cueGroup.add(ferrule);
 
-  // 4. Đầu tẩy (Tip): Da ép nhiều lớp có dính lơ xanh (Chalked blue tip)
+  // 4. Tip: Multi-layered leather tip chalked with blue chalk
   const tip = new THREE.Mesh(
     new THREE.CylinderGeometry(0.0074, 0.0075, 0.01, 12),
     new THREE.MeshStandardMaterial({ color: '#0284c7', roughness: 0.8 }),
@@ -161,24 +161,24 @@ function createCueMesh(styleId = 'carbon') {
   tip.position.y = buttLen + shaftLen + ferruleLen + 0.005;
   cueGroup.add(tip);
 
-  cueGroup.rotation.x = Math.PI / 2; // Hướng dọc khi đánh
+  cueGroup.rotation.x = Math.PI / 2; // Forward alignment when shooting
   return cueGroup;
 }
 
 /**
- * Nhân vật Cơ thủ Bida 3D đầy phong cách với Áo Polo, Găng tay Bi-a và Gậy Cơ Rasson
+ * 3D Billiards player avatar with Polo shirt, Billiard glove, and Rasson Cue Stick.
  */
 export function createAvatar(number = 8, cueStyle = 'ngocmy') {
   const root = new THREE.Group();
 
-  // Thân áo polo
+  // Polo shirt body
   const bodyMat = new THREE.MeshStandardMaterial({ map: poloTexture(number), roughness: 0.7 });
   const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 1.1, 24, 1), bodyMat);
   body.position.y = 0.75;
   body.castShadow = true;
   root.add(body);
 
-  // Quần tây thể thao thi đấu đen lịch lãm
+  // Elegant tournament dress pants
   const pants = new THREE.Mesh(
     new THREE.CylinderGeometry(0.5, 0.48, 0.3, 24),
     new THREE.MeshStandardMaterial({ color: '#18181b', roughness: 0.8 }),
@@ -187,14 +187,14 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
   pants.castShadow = true;
   root.add(pants);
 
-  // Đầu
+  // Head
   const skinMat = new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.6 });
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 16), skinMat);
   head.position.y = 1.55;
   head.castShadow = true;
   root.add(head);
 
-  // Tóc cơ thủ vuốt sáp gọn gàng
+  // Neatly styled player hair
   const hair = new THREE.Mesh(
     new THREE.SphereGeometry(0.31, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2.2),
     new THREE.MeshStandardMaterial({ color: '#27201c', roughness: 0.85 }),
@@ -202,7 +202,7 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
   hair.position.y = 1.58;
   root.add(hair);
 
-  // Mắt
+  // Eyes
   const eyeMat = new THREE.MeshBasicMaterial({ color: '#18181b' });
   for (const sx of [-0.1, 0.1]) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), eyeMat);
@@ -210,15 +210,15 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
     root.add(eye);
   }
 
-  // Hai tay:
-  // - Tay trái đeo Găng tay Bida 3 ngón màu xanh Simonis
-  // - Tay phải cầm gậy cơ Rasson Pro
+  // Arms:
+  // - Left hand: 3-finger Simonis blue billiard glove
+  // - Right hand: Holding Rasson Pro cue stick
   const armGeo = new THREE.CapsuleGeometry(0.1, 0.45, 4, 10);
   const sleeveMat = new THREE.MeshStandardMaterial({ color: BRAND.jersey.body, roughness: 0.75 });
   const gloveMat = new THREE.MeshStandardMaterial({ color: BRAND.jersey.accent, roughness: 0.6 });
   const arms = [];
 
-  // Tay trái (Cầu kê bi / Bridge hand có găng bida)
+  // Left arm (Bridge hand with billiard glove)
   const leftPivot = new THREE.Group();
   leftPivot.position.set(-0.55, 1.15, 0);
   const leftArm = new THREE.Mesh(armGeo, sleeveMat);
@@ -230,7 +230,7 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
   root.add(leftPivot);
   arms.push(leftPivot);
 
-  // Tay phải (Cầm gậy cơ Rasson)
+  // Right arm (Holding cue stick)
   const rightPivot = new THREE.Group();
   rightPivot.position.set(0.55, 1.15, 0);
   const rightArm = new THREE.Mesh(armGeo, sleeveMat);
@@ -239,7 +239,7 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
   const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), skinMat);
   rightHand.position.y = -0.62;
 
-  // Gậy cơ gắn vào tay phải
+  // Cue stick mounted to right hand
   const cue = createCueMesh(cueStyle);
   cue.position.set(0.02, -0.6, 0.1);
   cue.rotation.set(0.2, 0, -0.15);
@@ -250,7 +250,7 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
   root.add(rightPivot);
   arms.push(rightPivot);
 
-  // Vòng tròn định vị dưới chân (đổi màu vàng Simonis hoặc đỏ khi trong tầm đấu cơ)
+  // Ground indicator ring (turns gold or red when targeted)
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.62, 0.76, 40),
     new THREE.MeshBasicMaterial({ color: BRAND.jersey.trim, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }),
@@ -259,7 +259,7 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
   ring.position.y = 0.02;
   root.add(ring);
 
-  // Trạng thái chuyển động và diễn hoạt
+  // Animation and movement state
   const anim = {
     walk: 0,
     strike: 0,
@@ -289,7 +289,7 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
     arms[1].rotation.x = -swing * 0.8;
     body.position.y = 0.75 + (moving ? Math.abs(Math.sin(anim.walk)) * 0.05 : 0);
 
-    // Diễn hoạt Cú Chọc Cơ (Cue Stroke / Sparring)
+    // Cue stroke sparring animation
     if (anim.strike > 0) {
       anim.strike = Math.max(0, anim.strike - dt);
       const progress = 1 - anim.strike / 0.35;
@@ -301,7 +301,7 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
       arms[1].position.z = 0;
     }
 
-    // Diễn hoạt Ăn Mừng Chiến Thắng (Giương cao gậy cơ)
+    // Victory celebration animation (raising cue overhead)
     if (anim.celebrate > 0) {
       anim.celebrate = Math.max(0, anim.celebrate - dt);
       const t = 1.6 - anim.celebrate;
@@ -316,7 +316,7 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
       root.position.y = anim.ghost ? 0.35 + Math.sin(anim.t * 2.5) * 0.12 : 0;
     }
 
-    // Bị trúng đòn / giật lùi
+    // Hit response / knockback
     if (anim.hit > 0) {
       anim.hit = Math.max(0, anim.hit - dt);
       root.rotation.z = Math.sin(anim.hit * 40) * 0.15 * (anim.hit / 0.5);
@@ -354,34 +354,34 @@ export function createAvatar(number = 8, cueStyle = 'ngocmy') {
 }
 
 /**
- * Giá cơ bida đứng sang trọng ở tiền sảnh (Lounge Cue Stand)
+ * Floor-standing cue rack for the lounge and arena.
  */
 export function createHangingCueRack() {
   const rack = new THREE.Group();
   const woodMat = new THREE.MeshStandardMaterial({ color: '#1c1917', roughness: 0.8 });
   const goldMat = new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.8, roughness: 0.3 });
 
-  // Đế tròn
+  // Circular base
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.08, 24), woodMat);
   base.position.y = 0.04;
   base.castShadow = true;
   rack.add(base);
 
-  // Trụ đứng
+  // Central pole
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.2, 16), woodMat);
   pole.position.y = 1.1;
   rack.add(pole);
 
-  // Vành kẹp gậy phía trên
+  // Top cue clip ring
   const topRing = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 24), goldMat);
   topRing.position.y = 1.95;
   rack.add(topRing);
 
-  // Cắm 6 cây cơ xung quanh
+  // 6 cues positioned around perimeter
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
     const cue = createCueMesh(CUE_STYLES[i % CUE_STYLES.length].id);
-    cue.rotation.x = Math.PI; // Dựng đứng
+    cue.rotation.x = Math.PI; // Upright
     cue.position.set(Math.cos(a) * 0.42, 0.08, Math.sin(a) * 0.42);
     cue.scale.setScalar(1.2);
     rack.add(cue);

@@ -1,7 +1,7 @@
 /**
- * Hệ thống âm thanh tổng hợp bằng WebAudio chuyên biệt cho Billiards:
- * Tiếng cơ gõ bi (Cue strike), va chạm bi (Ball collision), bi rơi vào lỗ (Pocket drop),
- * tiếng thoa lơ (Chalking), ăn mừng (Fanfare) và âm thanh đồng hồ đếm giây (Shot clock).
+ * Specialized WebAudio synthesis system for Billiards:
+ * Cue strike, ball-to-ball collisions, pocket drops,
+ * chalking, victory fanfare, and shot clock countdown beeps.
  */
 export function createAudio() {
   let ctx = null;
@@ -33,7 +33,7 @@ export function createAudio() {
     return buf;
   }
 
-  // Âm vang nhẹ của phòng CLB Bida máy lạnh cao cấp
+  // Subtle ambient background ambience for upscale billiard lounge
   function startLoungeHum() {
     if (!ctx) return;
     const src = ctx.createBufferSource();
@@ -50,13 +50,13 @@ export function createAudio() {
   }
 
   /**
-   * Tiếng đầu cơ tiếp xúc gõ bi (Cue tip strike) - đanh gọn, có tiếng gỗ và tẩy da
+   * Cue tip strike on ball - crisp impact with wood and leather tip transients.
    */
   function cueHit(strength = 1) {
     if (!ensure()) return;
     const t = ctx.currentTime;
 
-    // Tiếng va chạm cơ học cực ngắn
+    // Short transient mechanical impact
     const osc = ctx.createOscillator();
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(820, t);
@@ -66,7 +66,7 @@ export function createAudio() {
     oscGain.gain.setValueAtTime(0.85 * strength, t);
     oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
 
-    // Tiếng ma sát lơ và da (Chalk & leather click)
+    // Chalk and leather tip friction click
     const noise = ctx.createBufferSource();
     noise.buffer = noiseBuffer(0.05);
     const nFilter = ctx.createBiquadFilter();
@@ -87,7 +87,7 @@ export function createAudio() {
   }
 
   /**
-   * Tiếng hai bi va đập (Ball collision) - tiếng nhựa phenolic resin cao cấp leng keng
+   * Billiard ball collision sound - bright click of phenolic resin balls.
    */
   function ballClick(strength = 1) {
     if (!ensure()) return;
@@ -109,7 +109,7 @@ export function createAudio() {
   }
 
   /**
-   * Tiếng bi rơi vào rọ / lưới lót da (Pocket drop thud)
+   * Sound of ball dropping into leather-lined pocket net.
    */
   function pocketDrop() {
     if (!ensure()) return;
@@ -130,7 +130,7 @@ export function createAudio() {
   }
 
   /**
-   * Tiếng thoa lơ vào đầu tẩy (Chalking)
+   * Sound of chalking the cue tip.
    */
   function chalk() {
     if (!ensure()) return;
@@ -153,7 +153,7 @@ export function createAudio() {
   }
 
   /**
-   * Tiếng ăn mừng chiến thắng (Fanfare)
+   * Victory celebration fanfare chord.
    */
   function cheer() {
     if (!ensure()) return;
@@ -175,7 +175,7 @@ export function createAudio() {
   }
 
   /**
-   * Tiếng đếm lùi thời gian Shot Clock (Matchroom 30s beep)
+   * Shot clock countdown beep (Matchroom standard 30s beep).
    */
   function shotClockBeep(isFinal = false) {
     if (!ensure()) return;
@@ -198,7 +198,7 @@ export function createAudio() {
   return {
     unlock: ensure,
     cueHit,
-    punch: cueHit, // Tương thích với lệnh punch cũ
+    punch: cueHit, // Backward-compatibility alias for punch action
     ballClick,
     pocketDrop,
     chalk,

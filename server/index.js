@@ -4,17 +4,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 
-// Khi dev, Vite chiếm PORT nên server ở 8787 để khớp proxy trong vite.config.js.
+// In development, Vite occupies PORT so server runs on 8787 to match proxy in vite.config.js.
 const PORT = process.argv.includes('--dev') ? 8787 : Number(process.env.PORT) || 8787;
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist');
-const TICK_MS = 66; // ~15 lần/giây
+const TICK_MS = 66; // ~15 ticks/second
 const ARENA_RADIUS = 22;
 const STRIKE_RANGE = 2.6;
 const STRIKE_COOLDOWN_MS = 650;
 const CHAT_COOLDOWN_MS = 600;
 const CHAT_HISTORY = 35;
 const MAX_HP = 5;
-const GHOST_MS = 30000; // làm ma / hồi sức 30 giây
+const GHOST_MS = 30000; // Ghost / recovery state duration: 30 seconds
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

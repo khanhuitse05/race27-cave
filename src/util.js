@@ -1,6 +1,6 @@
 import { BALL_CONFIG, BRAND } from './config.js';
 
-/** Tạo DOM gọn: el('div', { className: 'x' }, child1, 'text'). */
+/** Concise DOM builder: el('div', { className: 'x' }, child1, 'text'). */
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(props)) {
@@ -43,12 +43,12 @@ export function saveProfile(profile) {
   try {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
   } catch {
-    // Trình duyệt chặn storage: bỏ qua
+    // Storage access restricted by browser; ignore
   }
 }
 
 /**
- * Vẽ icon Bi Bida (1-15 hoặc bi cái) dạng 2D photorealistic lên canvas
+ * Draws a 2D photorealistic billiards ball icon (1-15 or cue ball) onto canvas.
  */
 export function drawPoolBallIcon(canvas, number = 8) {
   const g = canvas.getContext('2d');
@@ -63,7 +63,7 @@ export function drawPoolBallIcon(canvas, number = 8) {
   const num = Number.isInteger(number) ? Math.min(15, Math.max(0, number)) : 8;
   const cfg = BALL_CONFIG[num] || BALL_CONFIG[8];
 
-  // Đổ bóng chân
+  // Base shadow
   g.beginPath();
   g.ellipse(cx, cy + r * 0.85, r * 0.75, r * 0.22, 0, 0, Math.PI * 2);
   g.fillStyle = 'rgba(0, 0, 0, 0.35)';
@@ -71,29 +71,29 @@ export function drawPoolBallIcon(canvas, number = 8) {
   g.fill();
   g.filter = 'none';
 
-  // Khối bi tròn cơ sở
+  // Base spherical body
   g.save();
   g.beginPath();
   g.arc(cx, cy, r, 0, Math.PI * 2);
   g.clip();
 
   if (cfg.stripe) {
-    // Bi sọc (9-15): Nền trắng, dải màu ở giữa
+    // Striped ball (9-15): White base with colored center stripe
     g.fillStyle = '#f8fafc';
     g.fillRect(0, 0, w, h);
 
-    // Dải sọc màu
+    // Colored stripe band
     g.fillStyle = cfg.color;
     g.beginPath();
     g.rect(0, cy - r * 0.52, w, r * 1.04);
     g.fill();
   } else {
-    // Bi đặc (1-8): Toàn bộ 1 màu
+    // Solid ball (1-8): Uniform single color
     g.fillStyle = cfg.color;
     g.fillRect(0, 0, w, h);
   }
 
-  // Điểm vòng tròn trắng ở tâm chứa số
+  // White circular spot at center for number
   if (num > 0) {
     g.beginPath();
     g.arc(cx, cy, r * 0.44, 0, Math.PI * 2);
@@ -103,20 +103,20 @@ export function drawPoolBallIcon(canvas, number = 8) {
     g.lineWidth = 1;
     g.stroke();
 
-    // Số bi
+    // Ball number
     g.fillStyle = '#111827';
     g.font = `900 ${Math.round(r * 0.48)}px "Bitter", Georgia, serif`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(String(num), cx, cy + 1);
 
-    // Gạch chân số 6 và 9 để phân biệt chuẩn thi đấu
+    // Underline for 6 and 9 to distinguish competition numbers
     if (num === 6 || num === 9) {
       g.fillRect(cx - r * 0.16, cy + r * 0.28, r * 0.32, Math.max(1.5, r * 0.06));
     }
   }
 
-  // Đổ bóng 3D cầu (Shading)
+  // 3D spherical shading
   const grad = g.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.1, cx, cy, r);
   grad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
   grad.addColorStop(0.35, 'rgba(255, 255, 255, 0)');
@@ -127,7 +127,7 @@ export function drawPoolBallIcon(canvas, number = 8) {
   g.arc(cx, cy, r, 0, Math.PI * 2);
   g.fill();
 
-  // Vệt sáng bóng kính (Specular reflection)
+  // Specular glossy reflection
   g.beginPath();
   g.ellipse(cx - r * 0.36, cy - r * 0.36, r * 0.3, r * 0.16, -Math.PI / 4, 0, Math.PI * 2);
   g.fillStyle = 'rgba(255, 255, 255, 0.65)';
@@ -137,7 +137,7 @@ export function drawPoolBallIcon(canvas, number = 8) {
 }
 
 /**
- * Vẽ Logo Rasson Billiards sang trọng lên canvas (dùng làm texture bảng hiệu & HUD)
+ * Draws the elegant Rasson Billiards crest onto canvas.
  */
 export function drawRassonLogo(canvas, width, height) {
   const g = canvas.getContext('2d');
@@ -146,7 +146,7 @@ export function drawRassonLogo(canvas, width, height) {
   const cx = width / 2;
   const cy = height * 0.4;
 
-  // Nền bo góc cao cấp
+  // Premium rounded background
   const bgGrad = g.createLinearGradient(0, 0, 0, height);
   bgGrad.addColorStop(0, '#151922');
   bgGrad.addColorStop(1, '#0a0d12');
@@ -155,12 +155,12 @@ export function drawRassonLogo(canvas, width, height) {
   g.roundRect(4, 4, width - 8, height - 8, 16);
   g.fill();
 
-  // Viền vàng kim loại Rasson
+  // Rasson gold metallic border
   g.strokeStyle = '#d4af37';
   g.lineWidth = 3;
   g.stroke();
 
-  // Huy hiệu hai gậy bida bắt chéo (Crossed Cues)
+  // Crossed cues crest
   g.save();
   g.translate(cx, cy);
   g.strokeStyle = 'rgba(212, 175, 55, 0.35)';
@@ -173,7 +173,7 @@ export function drawRassonLogo(canvas, width, height) {
   g.stroke();
   g.restore();
 
-  // Bi số 8 tâm huy hiệu
+  // 8-ball center badge
   const ballR = Math.min(width, height) * 0.14;
   g.beginPath();
   g.arc(cx, cy, ballR, 0, Math.PI * 2);
@@ -193,7 +193,7 @@ export function drawRassonLogo(canvas, width, height) {
   g.textBaseline = 'middle';
   g.fillText('8', cx, cy + 1);
 
-  // Chữ RASSON BILLIARDS
+  // RASSON BILLIARDS text
   g.fillStyle = '#d4af37';
   g.font = '700 13px "Be Vietnam Pro", sans-serif';
   g.textAlign = 'center';

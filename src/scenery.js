@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BALL_CONFIG, BRAND } from './config.js';
 
-/** PRNG nhỏ để địa hình cố định giữa các lần tải */
+/** Lightweight PRNG to keep deterministic geometry between reloads */
 export function rng(seed) {
   let s = seed >>> 0 || 1;
   return () => {
@@ -15,7 +15,7 @@ function hash3(x, y, z, seed) {
   return h - Math.floor(h);
 }
 
-/** Đá low-poly: icosahedron bị bóp méo, shading phẳng */
+/** Low-poly rock: deformed icosahedron with flat shading */
 export function rockGeometry(radius, seed = 1, detail = 1, jag = 0.28) {
   const geo = new THREE.IcosahedronGeometry(radius, detail);
   const pos = geo.attributes.position;
@@ -35,7 +35,7 @@ export function rockMaterial(color = '#2c2522') {
 }
 
 /**
- * Texture chữ từ canvas, dùng cho biển hiệu, bảng tỉ số và poster
+ * Text canvas texture for signs, scoreboards, and posters.
  */
 export function textCanvas(w, h, draw) {
   const c = document.createElement('canvas');
@@ -49,7 +49,7 @@ export function textCanvas(w, h, draw) {
 }
 
 /**
- * Tạo texture bi bida cầu 3D với dải màu, số và bóng chuẩn
+ * Creates 3D spherical billiard ball texture with color stripe and numbers.
  */
 function createBallTexture(ballNo) {
   const c = document.createElement('canvas');
@@ -68,7 +68,7 @@ function createBallTexture(ballNo) {
     g.fillRect(0, 0, c.width, c.height);
   }
 
-  // Số bi hai bên mặt
+  // Ball number on both sides
   if (ballNo > 0) {
     for (const cx of [c.width * 0.25, c.width * 0.75]) {
       g.beginPath();
@@ -92,16 +92,16 @@ function createBallTexture(ballNo) {
 }
 
 /**
- * Bàn Bida Rasson Ox Tournament 9-Foot chính hãng đặt tại trung tâm Đấu trường:
- * Chân chữ V điêu khắc, viền nẹp kim loại vàng, mặt nỉ Simonis Electric Blue,
- * đèn chùm thi đấu Matchroom phía trên và cụm bi 9-ball có thể tương tác phá bi thật!
+ * Authentic Rasson Ox Tournament 9-Foot table positioned at the arena center:
+ * Sculpted V-shaped legs, gold metallic corner castings, Simonis Electric Blue cloth,
+ * Matchroom canopy light overhead, and interactive 9-ball physics simulation.
  */
 export function createRassonBilliardsTable(audio = null) {
   const group = new THREE.Group();
 
-  const TABLE_L = 4.4; // Dài (x)
-  const TABLE_W = 2.4; // Rộng (z)
-  const TABLE_H = 1.05; // Cao mặt bàn (y)
+  const TABLE_L = 4.4; // Length (x)
+  const TABLE_W = 2.4; // Width (z)
+  const TABLE_H = 1.05; // Table surface height (y)
   const RAIL_THICK = 0.22;
   const FELT_L = TABLE_L - RAIL_THICK * 2;
   const FELT_W = TABLE_W - RAIL_THICK * 2;
@@ -111,7 +111,7 @@ export function createRassonBilliardsTable(audio = null) {
   const feltMat = new THREE.MeshStandardMaterial({ color: BRAND.cloth, roughness: 0.92 });
   const pocketMat = new THREE.MeshStandardMaterial({ color: '#09090b', roughness: 0.9 });
 
-  // 1. Chân bàn Rasson Ox (Thiết kế chữ V vát cạnh signature)
+  // 1. Rasson Ox table legs (Signature chamfered V-beam design)
   const legShape = new THREE.BoxGeometry(0.55, TABLE_H - 0.25, 0.45);
   const legPositions = [
     [-TABLE_L * 0.32, 0, -TABLE_W * 0.28],
@@ -125,25 +125,25 @@ export function createRassonBilliardsTable(audio = null) {
     leg.rotation.y = (x * z > 0 ? 1 : -1) * 0.12;
     leg.castShadow = true;
 
-    // Viền vàng đế chân
+    // Gold foot base trim
     const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.04, 0.48), goldMat);
     goldTrim.position.y = -TABLE_H * 0.35;
     leg.add(goldTrim);
     group.add(leg);
   });
 
-  // Khung dầm chịu lực nối hai bên
+  // Cross structural beam
   const beam = new THREE.Mesh(new THREE.BoxGeometry(TABLE_L * 0.72, 0.2, 0.25), woodMat);
   beam.position.y = TABLE_H * 0.4;
   group.add(beam);
 
-  // 2. Thùng bàn (Cabinet)
+  // 2. Table cabinet apron
   const apron = new THREE.Mesh(new THREE.BoxGeometry(TABLE_L, 0.32, TABLE_W), woodMat);
   apron.position.y = TABLE_H - 0.18;
   apron.castShadow = true;
   group.add(apron);
 
-  // Biển hiệu Logo Rasson Bearbrick mạ vàng hai bên sườn bàn
+  // Rasson Bearbrick gold-framed logo plaque on side aprons
   const tableLoader = new THREE.TextureLoader();
   const tableLogoTex = tableLoader.load(BRAND.logo);
   tableLogoTex.colorSpace = THREE.SRGBColorSpace;
@@ -177,14 +177,14 @@ export function createRassonBilliardsTable(audio = null) {
   logoMeshBack.rotation.y = Math.PI;
   group.add(logoMeshBack);
 
-  // 3. Mặt nỉ Simonis Electric Blue
+  // 3. Simonis Electric Blue bed cloth
   const felt = new THREE.Mesh(new THREE.PlaneGeometry(FELT_L, FELT_W), feltMat);
   felt.rotation.x = -Math.PI / 2;
   felt.position.y = TABLE_H;
   felt.receiveShadow = true;
   group.add(felt);
 
-  // 4. Băng gỗ (Cushion Rails) & Điểm ngắm kim cương (Diamond Sights)
+  // 4. Cushion rails and inlaid diamond sights
   const railGeoX = new THREE.BoxGeometry(FELT_L, 0.12, RAIL_THICK);
   const railGeoZ = new THREE.BoxGeometry(RAIL_THICK, 0.12, FELT_W);
 
@@ -206,7 +206,7 @@ export function createRassonBilliardsTable(audio = null) {
 
   group.add(railTop, railBottom, railLeft, railRight);
 
-  // Điểm ngắm xà cừ (Diamond sights) khảm trên băng
+  // Inlaid mother-of-pearl diamond sights
   const diamondGeo = new THREE.CircleGeometry(0.014, 4);
   const diamondMat = new THREE.MeshBasicMaterial({ color: '#fef08a' });
   for (let i = 1; i <= 7; i++) {
@@ -219,17 +219,17 @@ export function createRassonBilliardsTable(audio = null) {
     }
   }
 
-  // 5. Góc mạ vàng & 6 Lỗ bida (Pockets)
+  // 5. Gold corner castings and 6 pockets
   const cornerGeo = new THREE.BoxGeometry(RAIL_THICK * 1.15, 0.13, RAIL_THICK * 1.15);
   const pocketGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.15, 16);
 
   const pocketPositions = [
-    [-FELT_L / 2, TABLE_H + 0.04, -FELT_W / 2], // Góc trên trái
-    [0, TABLE_H + 0.04, -FELT_W / 2 - 0.02], // Giữa trên
-    [FELT_L / 2, TABLE_H + 0.04, -FELT_W / 2], // Góc trên phải
-    [-FELT_L / 2, TABLE_H + 0.04, FELT_W / 2], // Góc dưới trái
-    [0, TABLE_H + 0.04, FELT_W / 2 + 0.02], // Giữa dưới
-    [FELT_L / 2, TABLE_H + 0.04, FELT_W / 2], // Góc dưới phải
+    [-FELT_L / 2, TABLE_H + 0.04, -FELT_W / 2], // Top left corner
+    [0, TABLE_H + 0.04, -FELT_W / 2 - 0.02], // Top center
+    [FELT_L / 2, TABLE_H + 0.04, -FELT_W / 2], // Top right corner
+    [-FELT_L / 2, TABLE_H + 0.04, FELT_W / 2], // Bottom left corner
+    [0, TABLE_H + 0.04, FELT_W / 2 + 0.02], // Bottom center
+    [FELT_L / 2, TABLE_H + 0.04, FELT_W / 2], // Bottom right corner
   ];
 
   pocketPositions.forEach(([x, y, z]) => {
@@ -237,13 +237,13 @@ export function createRassonBilliardsTable(audio = null) {
     hole.position.set(x, y - 0.06, z);
     group.add(hole);
 
-    // Mũ chụp góc kim loại vàng Rasson
+    // Rasson gold metal corner casting
     const cap = new THREE.Mesh(cornerGeo, goldMat);
     cap.position.set(x, y + 0.02, z);
     group.add(cap);
   });
 
-  // 6. Đèn chùm thi đấu Matchroom phẳng không bóng (Flat LED Canopy Light)
+  // 6. Flat LED canopy tournament lighting
   const lampGroup = new THREE.Group();
   lampGroup.position.set(0, TABLE_H + 2.5, 0);
 
@@ -251,20 +251,20 @@ export function createRassonBilliardsTable(audio = null) {
   const canopy = new THREE.Mesh(canopyGeo, woodMat);
   lampGroup.add(canopy);
 
-  // Tấm khuếch tán LED phát sáng rực rỡ
+  // High-diffusion LED emission panel
   const diffuser = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.2), new THREE.MeshBasicMaterial({ color: '#ffffff' }));
   diffuser.rotation.x = Math.PI / 2;
   diffuser.position.y = -0.075;
   lampGroup.add(diffuser);
 
-  // Dây cáp treo thả từ trần hang
+  // Ceiling hanging suspension cables
   for (const [cx, cz] of [[-1.5, -0.5], [1.5, -0.5], [-1.5, 0.5], [1.5, 0.5]]) {
     const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 4.2, 8), goldMat);
     cable.position.set(cx, 2.1, cz);
     lampGroup.add(cable);
   }
 
-  // Nguồn sáng chiếu trực tiếp xuống bàn không tạo bóng chết
+  // Shadowless direct table illumination
   const tableLight = new THREE.PointLight('#f8fafc', 55, 12, 1.4);
   tableLight.position.set(0, -0.3, 0);
   tableLight.castShadow = true;
@@ -275,7 +275,7 @@ export function createRassonBilliardsTable(audio = null) {
   group.add(lampGroup);
 
   // ---------------------------------------------------------------------------
-  // Bộ bi 9-Ball và Hệ thống Vật lý Tương tác (Break & Shoot Simulation)
+  // 9-Ball Set and Interactive Physics (Break & Shoot Simulation)
   // ---------------------------------------------------------------------------
   const BALL_RADIUS = 0.062;
   const BALL_Y = TABLE_H + BALL_RADIUS;
@@ -285,13 +285,13 @@ export function createRassonBilliardsTable(audio = null) {
 
   const ballSphereGeo = new THREE.SphereGeometry(BALL_RADIUS, 24, 20);
 
-  // Xếp hình thoi 9-ball (Diamond 9-Ball Rack): Bi 1 ở đỉnh, Bi 9 ở tâm
+  // Diamond 9-Ball rack: Ball 1 at apex, Ball 9 at center
   const rackPattern = [
     { no: 1, row: 0, col: 0 },
     { no: 2, row: 1, col: -0.5 },
     { no: 3, row: 1, col: 0.5 },
     { no: 4, row: 2, col: -1 },
-    { no: 9, row: 2, col: 0 }, // Bi 9 ở tâm hình thoi
+    { no: 9, row: 2, col: 0 }, // 9-ball at diamond center
     { no: 5, row: 2, col: 1 },
     { no: 6, row: 3, col: -0.5 },
     { no: 7, row: 3, col: 0.5 },
@@ -317,11 +317,11 @@ export function createRassonBilliardsTable(audio = null) {
     };
   }
 
-  // Bi cái (Cue Ball) đặt tại vạch đầu bàn (Head string)
+  // Cue ball positioned at the head string
   let cueBall = createBall(0, -FELT_L * 0.28, 0);
   balls.push(cueBall);
 
-  // Cụm 9 bi xếp tại điểm cuối bàn (Foot spot)
+  // 9-ball cluster positioned at the foot spot
   const rackOriginX = FELT_L * 0.24;
   const colSpacing = BALL_RADIUS * 2.02;
   const rowSpacing = BALL_RADIUS * 1.76;
@@ -348,7 +348,7 @@ export function createRassonBilliardsTable(audio = null) {
   }
 
   /**
-   * Cú Phá Bi (Break Shot): Phát lực cực mạnh từ bi cái lao vào cụm 9 bi
+   * Break Shot: Accelerates cue ball with high impulse into the 9-ball rack.
    */
   function breakShot(power = 18, angleJitter = 0) {
     if (cueBall.pocketed) {
@@ -361,7 +361,7 @@ export function createRassonBilliardsTable(audio = null) {
     audio?.cueHit?.(1);
   }
 
-  // Cập nhật vật lý bi lăn, va đập, nảy băng và rơi lỗ
+  // Updates rolling physics, rail rebounds, collisions, and pocketing
   const minX = -FELT_L / 2 + BALL_RADIUS + 0.03;
   const maxX = FELT_L / 2 - BALL_RADIUS - 0.03;
   const minZ = -FELT_W / 2 + BALL_RADIUS + 0.03;
@@ -370,7 +370,7 @@ export function createRassonBilliardsTable(audio = null) {
   function updateBalls(dt) {
     const friction = Math.exp(-dt * 1.35);
 
-    // 1. Di chuyển và nảy băng
+    // 1. Movement and cushion rail bounces
     for (const b of balls) {
       if (b.pocketed) continue;
 
@@ -382,7 +382,7 @@ export function createRassonBilliardsTable(audio = null) {
         b.vel.set(0, 0);
       }
 
-      // Nảy băng x
+      // X cushion bounce
       if (b.pos.x < minX) {
         b.pos.x = minX;
         b.vel.x *= -0.82;
@@ -393,7 +393,7 @@ export function createRassonBilliardsTable(audio = null) {
         if (Math.abs(b.vel.x) > 0.4) audio?.ballClick?.(0.5);
       }
 
-      // Nảy băng z
+      // Z cushion bounce
       if (b.pos.z < minZ) {
         b.pos.z = minZ;
         b.vel.y *= -0.82;
@@ -404,7 +404,7 @@ export function createRassonBilliardsTable(audio = null) {
         if (Math.abs(b.vel.y) > 0.4) audio?.ballClick?.(0.5);
       }
 
-      // Rơi lỗ (Check 6 pockets)
+      // Pocket entry detection across 6 pockets
       for (const [px, _, pz] of pocketPositions) {
         if (Math.hypot(b.pos.x - px, b.pos.z - pz) < 0.16) {
           b.pocketed = true;
@@ -415,7 +415,7 @@ export function createRassonBilliardsTable(audio = null) {
         }
       }
 
-      // Cập nhật vị trí mesh và lăn xoay tròn
+      // Update 3D mesh position and rotational rolling
       b.mesh.position.x = b.pos.x;
       b.mesh.position.z = b.pos.z;
       const rollDist = b.vel.length() * dt;
@@ -425,7 +425,7 @@ export function createRassonBilliardsTable(audio = null) {
       }
     }
 
-    // 2. Va chạm giữa các bi (Ball-to-Ball Elastic Collisions)
+    // 2. Ball-to-ball elastic collisions
     const minDist = BALL_RADIUS * 2;
     for (let i = 0; i < balls.length; i++) {
       const b1 = balls[i];
@@ -443,14 +443,14 @@ export function createRassonBilliardsTable(audio = null) {
           const nx = dx / dist;
           const nz = dz / dist;
 
-          // Đẩy hai bi ra không dính nhau
+          // Resolve overlap
           const overlap = (minDist - dist) / 2;
           b1.pos.x -= nx * overlap;
           b1.pos.z -= nz * overlap;
           b2.pos.x += nx * overlap;
           b2.pos.z += nz * overlap;
 
-          // Tách vận tốc theo pháp tuyến va chạm
+          // Velocity separation along collision normal
           const kx = b1.vel.x - b2.vel.x;
           const kz = b1.vel.y - b2.vel.y;
           const p = 2 * (nx * kx + nz * kz) / 2;
@@ -478,7 +478,7 @@ export function createRassonBilliardsTable(audio = null) {
 }
 
 /**
- * Đèn chiếu tường LED / Đuốc hiện đại phong cách Đấu trường ngầm
+ * Modern arena wall sconce with Simonis blue vertical LED luminaire.
  */
 export function createArenaTorch() {
   const group = new THREE.Group();
@@ -486,12 +486,12 @@ export function createArenaTorch() {
   const fixtureMat = new THREE.MeshStandardMaterial({ color: '#18181b', metalness: 0.8, roughness: 0.3 });
   const goldMat = new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.9, roughness: 0.2 });
 
-  // Giá gắn tường
+  // Wall mount bracket
   const mount = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.45, 0.18), fixtureMat);
   mount.castShadow = true;
   group.add(mount);
 
-  // Thanh LED dọc màu xanh Simonis
+  // Vertical LED light bar
   const bar = new THREE.Mesh(
     new THREE.CylinderGeometry(0.04, 0.04, 0.8, 16),
     new THREE.MeshBasicMaterial({ color: '#38bdf8' }),
@@ -499,14 +499,14 @@ export function createArenaTorch() {
   bar.position.set(0, 0, 0.16);
   group.add(bar);
 
-  // Vành vàng bọc hai đầu
+  // Gold end caps
   for (const sy of [-0.38, 0.38]) {
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 16), goldMat);
     ring.position.set(0, sy, 0.16);
     group.add(ring);
   }
 
-  // Ánh sáng xanh hắt vào vách đá
+  // Cavern wall cast lighting
   const light = new THREE.PointLight('#38bdf8', 12, 10, 1.8);
   light.position.set(0, 0, 0.35);
   group.add(light);

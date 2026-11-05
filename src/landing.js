@@ -10,7 +10,7 @@ function buildLandingScene(scene) {
 
   scene.add(new THREE.HemisphereLight('#60a5fa', '#1e293b', 1.8));
 
-  // Ánh sáng spotlight vàng ấm rọi vào cổng
+  // Warm golden directional spotlight illuminating the entrance
   const spot = new THREE.DirectionalLight('#fef08a', 2.8);
   spot.position.set(6, 12, 8);
   spot.castShadow = true;
@@ -18,7 +18,7 @@ function buildLandingScene(scene) {
   Object.assign(spot.shadow.camera, { left: -14, right: 14, top: 14, bottom: -6 });
   scene.add(spot);
 
-  // Sàn đá phiến đen sảnh VIP
+  // Black slate floor of VIP lounge
   const floor = new THREE.Mesh(
     new THREE.CircleGeometry(55, 48),
     new THREE.MeshStandardMaterial({ color: '#161920', roughness: 0.85, metalness: 0.1 }),
@@ -27,7 +27,7 @@ function buildLandingScene(scene) {
   floor.receiveShadow = true;
   scene.add(floor);
 
-  // Thảm nỉ Simonis Electric Blue dẫn lối vào đấu trường
+  // Simonis Electric Blue carpet runway leading into the arena
   const carpet = new THREE.Mesh(
     new THREE.PlaneGeometry(3.6, 22),
     new THREE.MeshStandardMaterial({ color: BRAND.cloth, roughness: 0.95 }),
@@ -37,7 +37,7 @@ function buildLandingScene(scene) {
   carpet.receiveShadow = true;
   scene.add(carpet);
 
-  // Vòm đá cổng vào Đấu trường ngầm
+  // Rock archway of the underground arena portal
   const rand = rng(42);
   const rockMat = rockMaterial('#232730');
   const rocks = new THREE.Group();
@@ -55,7 +55,7 @@ function buildLandingScene(scene) {
     rocks.add(m);
   });
 
-  // Khối vách đá hai bên
+  // Flanking cavern rock formations
   for (let i = 0; i < 28; i++) {
     const r = 2.6 + rand() * 3.6;
     const m = new THREE.Mesh(rockGeometry(r, 400 + i, 1, 0.3), rockMat);
@@ -79,7 +79,7 @@ function buildLandingScene(scene) {
   }
   scene.add(rocks);
 
-  // Đường hầm dẫn sâu vào đấu trường ngầm với ánh đèn Simonis xanh hắt ra
+  // Deep portal tunnel into the arena with Simonis blue glow
   const tunnel = new THREE.Mesh(
     new THREE.CylinderGeometry(3.6, 3.6, 10, 24, 1, true, Math.PI / 2, Math.PI),
     new THREE.MeshStandardMaterial({ color: '#090d14', side: THREE.BackSide, roughness: 1 }),
@@ -93,7 +93,7 @@ function buildLandingScene(scene) {
   glowLight.position.set(0, 1.2, -6.5);
   scene.add(glowLight);
 
-  // Biển hiệu đá Rasson Billiards hiển thị Logo gấu Bearbrick chính hãng
+  // Stone monument slab featuring the official Rasson Bearbrick logo
   const loader = new THREE.TextureLoader();
   const logoTexture = loader.load(BRAND.logo || '/images/logo.png');
   logoTexture.colorSpace = THREE.SRGBColorSpace;
@@ -104,7 +104,7 @@ function buildLandingScene(scene) {
   slab.castShadow = true;
   scene.add(slab);
 
-  // Mặt biển logo Rasson
+  // Rasson logo display face
   const signFace = new THREE.Mesh(
     new THREE.PlaneGeometry(2.9, 2.9),
     new THREE.MeshStandardMaterial({ map: logoTexture, roughness: 0.45, metalness: 0.1 }),
@@ -112,7 +112,7 @@ function buildLandingScene(scene) {
   signFace.position.set(-5.0, 2.2, 2.39);
   scene.add(signFace);
 
-  // Khung viền mạ vàng xung quanh logo
+  // Gold metallic frame around logo
   const goldFrame = new THREE.Mesh(
     new THREE.BoxGeometry(3.04, 3.04, 0.08),
     new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.9, roughness: 0.2 }),
@@ -125,13 +125,13 @@ function buildLandingScene(scene) {
   base.castShadow = base.receiveShadow = true;
   scene.add(base);
 
-  // Giá cơ đứng Rasson mạ vàng bên phải cổng
+  // Floor-standing cue rack to the right of portal
   const cueRack = createHangingCueRack();
   cueRack.position.set(5.2, 0, 2.2);
   cueRack.scale.setScalar(1.2);
   scene.add(cueRack);
 
-  // Cặp Bi 8 và Bi 9 3D khổng lồ bay lơ lửng xoay tròn nghệ thuật hai bên sảnh
+  // Levitating 3D 8-ball and 9-ball decorative display
   const ballSphere = new THREE.SphereGeometry(0.7, 32, 24);
   const ballMat8 = new THREE.MeshStandardMaterial({ color: '#111827', roughness: 0.2, metalness: 0.1 });
   const ballMat9 = new THREE.MeshStandardMaterial({ color: '#f59e0b', roughness: 0.2, metalness: 0.1 });
@@ -150,10 +150,10 @@ function buildLandingScene(scene) {
 }
 
 /**
- * Hộp thoại tạo Profile cơ thủ (Tên, Gậy cơ)
- * Title: "Race 27 Gia Đình"
- * Logo Rasson Bearbrick hiển thị góc trang trọng
- * Bi số may mắn sau lưng random tự động
+ * Player Profile modal dialog (Player Name & Cue Stick Selection).
+ * Title: "Race 27 Gia Dinh".
+ * Displays official Bearbrick Rasson logo.
+ * Lucky ball number (1-15) is randomly assigned behind the scenes.
  */
 function nameDialog(root, onSubmit) {
   const saved = loadProfile();
@@ -164,7 +164,7 @@ function nameDialog(root, onSubmit) {
     value: saved.name || '',
   });
 
-  // Chọn kiểu gậy cơ thi đấu (Mặc định: Ngọc Mỹ)
+  // Tournament cue stick selection (Default: Ngoc My)
   const cueSelect = el(
     'select',
     { className: 'select-input' },
@@ -210,7 +210,7 @@ function nameDialog(root, onSubmit) {
     e.preventDefault();
     if (!nameInput.value.trim()) return;
 
-    // Bi số may mắn sau lưng ngẫu nhiên từ 1 đến 15
+    // Random lucky ball number (1-15)
     const randomBall = Math.floor(Math.random() * 15) + 1;
     const profile = {
       name: nameInput.value.trim().slice(0, 30),
@@ -231,7 +231,7 @@ function nameDialog(root, onSubmit) {
 }
 
 /**
- * Gắn kết màn hình Landing Page 3D
+ * Mounts 3D landing page scene and UI panels.
  */
 export function mountLanding(app, { onEnter }) {
   const stage = el('div', { className: 'stage' });
@@ -297,7 +297,7 @@ export function mountLanding(app, { onEnter }) {
     camera.position.y = 2.6 + Math.sin(t * 0.4) * 0.15 - mouse.y * 0.35;
     camera.lookAt(0, 2.3, 0);
 
-    // Diễn hoạt bi 8 và bi 9 lơ lửng xoay tròn
+    // Floating 8-ball and 9-ball idle animation
     ball8.position.y = 1.3 + Math.sin(t * 1.6) * 0.18;
     ball8.rotation.y = t * 0.8;
     ball8.rotation.x = Math.sin(t * 0.5) * 0.3;
