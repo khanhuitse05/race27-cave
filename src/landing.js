@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BRAND, CUE_STYLES, QUIZ } from './config.js';
+import { BRAND, CUE_STYLES } from './config.js';
 import { createHangingCueRack } from './avatar.js';
 import { rockGeometry, rockMaterial, rng } from './scenery.js';
 import { el, loadProfile, saveProfile } from './util.js';
@@ -172,7 +172,7 @@ function nameDialog(root, onSubmit) {
   );
 
   const counter = el('div', { className: 'counter' });
-  const submit = el('button', { className: 'btn btn-primary', type: 'submit' }, 'Tiếp tục vào Đấu Trường 🎱');
+  const submit = el('button', { className: 'btn btn-primary', type: 'submit' }, 'Vào Đấu Trường 🎱');
   const cancel = el('button', { className: 'btn btn-ghost', type: 'button' }, 'Huỷ');
 
   function refresh() {
@@ -231,55 +231,6 @@ function nameDialog(root, onSubmit) {
 }
 
 /**
- * Câu hỏi vui thử tài kiến thức bi-a trước khi bước vào đấu trường
- */
-function quizDialog(root, onPass) {
-  const item = QUIZ[Math.floor(Math.random() * QUIZ.length)];
-  const msg = el('div');
-  const go = el('button', { className: 'btn btn-primary', type: 'button', style: 'display:none' }, 'Vào Đấu Trường 🎱');
-  const cancel = el('button', { className: 'btn btn-ghost', type: 'button' }, 'Quay lại');
-
-  const opts = item.options.map((text, i) => {
-    const b = el('button', { className: 'quiz-opt', type: 'button' }, text);
-    b.addEventListener('click', () => {
-      opts.forEach((o) => o.classList.remove('wrong'));
-      if (i === item.answer) {
-        b.classList.add('right');
-        opts.forEach((o) => (o.disabled = true));
-        msg.className = 'quiz-msg right';
-        msg.textContent = `🎯 Chính xác! ${item.hint || 'Chào mừng cơ thủ bước vào đấu trường!'}`;
-        cancel.style.display = 'none';
-        go.style.display = '';
-        go.focus();
-      } else {
-        b.classList.add('wrong');
-        msg.className = 'quiz-msg wrong';
-        msg.textContent = '❌ Chưa chuẩn rồi cơ thủ ơi, chọn lại nhé!';
-      }
-    });
-    return b;
-  });
-
-  const modal = el(
-    'div',
-    { className: 'modal' },
-    el('div', { className: 'eyebrow' }, 'CÂU ĐỐ BIDA TRƯỚC KHI VÀO ĐẤU TRƯỜNG'),
-    el('h2', {}, item.q),
-    ...opts,
-    msg,
-    el('div', { className: 'actions' }, cancel, go),
-  );
-
-  const backdrop = el('div', { className: 'modal-backdrop' }, modal);
-  cancel.addEventListener('click', () => backdrop.remove());
-  go.addEventListener('click', () => {
-    backdrop.remove();
-    onPass();
-  });
-  root.append(backdrop);
-}
-
-/**
  * Gắn kết màn hình Landing Page 3D
  */
 export function mountLanding(app, { onEnter }) {
@@ -305,7 +256,7 @@ export function mountLanding(app, { onEnter }) {
   const foot = el('div', { className: 'landing-foot' }, `${BRAND.disclaimer} • ${BRAND.tableModel}`);
   app.append(stage, panel, foot);
 
-  enterBtn.addEventListener('click', () => nameDialog(app, (profile) => quizDialog(app, () => onEnter(profile))));
+  enterBtn.addEventListener('click', () => nameDialog(app, (profile) => onEnter(profile)));
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));

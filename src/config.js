@@ -56,46 +56,6 @@ export const CUE_STYLES = [
   { id: 'dragon', name: 'Crimson Dragon', shaft: '#262626', wrap: '#991b1b', ring: '#f87171' },
 ];
 
-// Câu hỏi vui về kiến thức bida trước khi vào đấu trường
-export const QUIZ = [
-  {
-    q: 'Bàn thi đấu Rasson Ox tiêu chuẩn Matchroom World Pool có kích thước bao nhiêu feet?',
-    options: ['9 feet (chuẩn quốc tế)', '7 feet (bàn nhỏ)', '8 feet', '12 feet (bàn Snooker)'],
-    answer: 0,
-    hint: 'Bàn 9 feet là tiêu chuẩn thi đấu Pool quốc tế hàng đầu!',
-  },
-  {
-    q: 'Trong thể thức 9 bi (9-Ball), đánh bi nào rơi vào lỗ hợp lệ sẽ thắng ngay ván đấu?',
-    options: ['Bi số 9', 'Bi số 1', 'Bi số 8', 'Bi cái'],
-    answer: 0,
-    hint: 'Bi số 9 màu sọc vàng là mục tiêu quyết định trận đấu!',
-  },
-  {
-    q: 'Khi đầu tẩy cơ (tip) bị trượt cơ (miscue) do thiếu ma sát với bi cái, cơ thủ cần bôi gì?',
-    options: ['Bôi lơ (Chalk)', 'Bôi nước', 'Bôi dầu dừa', 'Bôi bột mì'],
-    answer: 0,
-    hint: 'Viên lơ xanh giúp tăng tối đa ma sát và độ bám cho đầu cơ.',
-  },
-  {
-    q: 'Huyền thoại Billiards Efren Reyes được cả thế giới tôn xưng với biệt danh lẫy lừng nào?',
-    options: ['The Magician (Phù thuỷ)', 'The Rocket', 'The Sniper', 'The Emperor'],
-    answer: 0,
-    hint: 'Biệt danh "The Magician" gắn liền với những đường cơ ma thuật không tưởng!',
-  },
-  {
-    q: 'Kỹ thuật dùng cơ đánh đưa bi cái bay bổng qua chướng ngại vật bi khác vào lỗ gọi là gì?',
-    options: ['Jump shot (Cú nhảy bi)', 'Masse shot', 'Draw shot (Trổ)', 'Bank shot (A-băng)'],
-    answer: 0,
-    hint: 'Jump shot là kỹ thuật đòi hỏi gậy nhảy chuyên dụng và góc phát lực cực chuẩn.',
-  },
-  {
-    q: 'Tên dòng vải nỉ thi đấu nức tiếng thế giới trải trên bàn Rasson Arena là gì?',
-    options: ['Iwan Simonis (Bỉ)', 'Vải nhung lông cừu', 'Vải Kaki', 'Vải dù chống thấm'],
-    answer: 0,
-    hint: 'Iwan Simonis sản xuất tại Bỉ từ năm 1680, chuẩn mực số 1 của bi-a thế giới!',
-  },
-];
-
 // Bảng điểm giải đấu Race 27 Gia Đình
 export const SCOREBOARD = {
   title: 'RACE 27 GIA ĐÌNH',
