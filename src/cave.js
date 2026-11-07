@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
-import { BRAND, LEGENDS, SCOREBOARD } from './config.js';
+import { BALL_CONFIG, BRAND, LEGENDS, SCOREBOARD } from './config.js';
 import { createAvatar } from './avatar.js';
 import { createAudio } from './audio.js';
 import { connect } from './net.js';
 import { createArenaTorch, createRassonBilliardsTable, rng, rockGeometry, rockMaterial, textCanvas } from './scenery.js';
 import { drawPoolBallIcon, el } from './util.js';
+import { BALL_Y } from './billiards/constants.js';
+import { evaluateShotOutcome } from './billiards/nineball.js';
 
 const ARENA_RADIUS = 22;
 const TABLE_INTERACTION_RADIUS = 4.2;
@@ -605,7 +607,7 @@ function capture(node, pointerId) {
 // Rasson Billiards Arena HUD Interface
 // ---------------------------------------------------------------------------
 
-function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
+function buildHud(app, { onLeave, onStepUp, onResetRack, onCameraToggle, onShoot, onCancelAim, onSpinChange }) {
   const kbd = (k) => el('span', { className: 'kbd' }, k);
 
   const leave = el('button', { className: 'pill', type: 'button' }, '🚪 Rời Đấu Trường');
@@ -655,13 +657,79 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
   const toast = el('div', { className: 'toast' });
 
   // Central Billiards Table Interaction Panel
-  const breakBtn = el('button', { className: 'btn-table-action break-btn', type: 'button' }, '🎱 Phá Bi Rasson', kbd('Space'));
+  const stepUpBtn = el('button', { className: 'btn-table-action btn-step-up', type: 'button' }, '🎱 Lên Cơ Bắn', kbd('E'));
   const rackBtn = el('button', { className: 'btn-table-action rack-btn', type: 'button' }, '🔄 Xếp Lại Bi', kbd('R'));
-  const tableActions = el('div', { className: 'table-actions-panel' }, breakBtn, rackBtn);
+  const tableActions = el('div', { className: 'table-actions-panel' }, stepUpBtn, rackBtn);
 
-  breakBtn.addEventListener('click', onBreakShot);
+  // Challenge Banner (shows when another player is aiming)
+  const challengeBanner = el('div', { className: 'challenge-banner' }, '🎯 Cơ thủ đang lên cơ! Nhấn [F] để đấm cướp lượt!');
+
+  // Aiming Controls Panel (active when player is the shooter)
+  const targetBallCircle = el('span', { className: 'target-ball-circle' });
+  const targetBallText = el('span', {}, 'Mục tiêu: Bi số 1');
+  const targetBadge = el('div', { className: 'target-badge' }, targetBallCircle, targetBallText);
+  const turnTimerText = el('div', { className: 'turn-timer-text' }, '⏳ 35s');
+  const aimHudHeader = el('div', { className: 'aim-hud-header' }, targetBadge, turnTimerText);
+
+  // Spin widget
+  const spinCrossH = el('div', { className: 'spin-crosshair-h' });
+  const spinCrossV = el('div', { className: 'spin-crosshair-v' });
+  const spinDot = el('div', { className: 'spin-dot' });
+  const spinBall = el('div', { className: 'spin-ball', 'aria-label': 'Chỉnh xoáy bi cái' }, spinCrossH, spinCrossV, spinDot);
+  const spinContainer = el('div', { className: 'spin-widget-container' }, el('div', { className: 'spin-label' }, 'Xoáy / Áp-phê'), spinBall);
+
+  let spinDragging = false;
+  const currentSpin = { x: 0, y: 0 };
+  function updateSpinFromPointer(e) {
+    const rect = spinBall.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const r = rect.width / 2;
+    let dx = (e.clientX - cx) / r;
+    let dy = (e.clientY - cy) / r;
+    const len = Math.hypot(dx, dy);
+    if (len > 0.8) {
+      dx = (dx / len) * 0.8;
+      dy = (dy / len) * 0.8;
+    }
+    currentSpin.x = dx;
+    currentSpin.y = -dy; // Up is follow (+y), down is draw (-y)
+    spinDot.style.left = `${50 + dx * 50}%`;
+    spinDot.style.top = `${50 + dy * 50}%`;
+    onSpinChange?.(currentSpin.x, currentSpin.y);
+  }
+  spinBall.addEventListener('pointerdown', (e) => {
+    spinDragging = true;
+    spinBall.setPointerCapture?.(e.pointerId);
+    updateSpinFromPointer(e);
+  });
+  spinBall.addEventListener('pointermove', (e) => {
+    if (spinDragging) updateSpinFromPointer(e);
+  });
+  const stopSpinDrag = () => (spinDragging = false);
+  spinBall.addEventListener('pointerup', stopSpinDrag);
+  spinBall.addEventListener('pointercancel', stopSpinDrag);
+
+  // Power bar
+  const powerValText = el('span', {}, '50%');
+  const powerHeader = el('div', { className: 'power-header' }, el('span', {}, 'Lực đánh (Space)'), powerValText);
+  const powerBarFill = el('div', { className: 'power-bar-fill' });
+  const powerBarBg = el('div', { className: 'power-bar-bg' }, powerBarFill);
+  const powerContainer = el('div', { className: 'power-container' }, powerHeader, powerBarBg);
+
+  const aimControlsRow = el('div', { className: 'aim-controls-row' }, spinContainer, powerContainer);
+
+  const shootBtn = el('button', { className: 'btn-shoot', type: 'button' }, '💥 Đánh Bi', kbd('Space'));
+  const cancelAimBtn = el('button', { className: 'btn-cancel-aim', type: 'button' }, '↩ Rời Bàn', kbd('Esc'));
+  const aimActionsRow = el('div', { className: 'aim-actions-row' }, cancelAimBtn, shootBtn);
+
+  const aimHud = el('div', { className: 'aim-hud' }, aimHudHeader, aimControlsRow, aimActionsRow);
+
+  stepUpBtn.addEventListener('click', onStepUp);
   rackBtn.addEventListener('click', onResetRack);
   camBtn.addEventListener('click', onCameraToggle);
+  shootBtn.addEventListener('click', onShoot);
+  cancelAimBtn.addEventListener('click', onCancelAim);
 
   const strikeHint = el('div', { className: 'strike-hint' }, '🎯 Nhấn F để Thách đấu Chọc cơ');
 
@@ -684,6 +752,8 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     hint,
     toast,
     tableActions,
+    challengeBanner,
+    aimHud,
     strikeHint,
     joystick,
     strikeTouch,
@@ -795,9 +865,10 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
       [['Chuột'], 'Xoay góc nhìn (Bấm vào cảnh để khoá chuột, Esc để thả)'],
       [['Cuộn chuột'], 'Phóng to / thu nhỏ góc nhìn camera'],
       [['C'], 'Đổi chế độ góc máy (3rd Person, First Person, Bàn bida)'],
-      [['F', 'Click'], 'Thách đấu Chọc cơ người đối diện trong vòng đỏ'],
-      [['Space'], 'Phá bi trên bàn Rasson khi đứng gần bàn'],
-      [['R'], 'Xếp lại cụm bi 9-ball trên bàn'],
+      [['E'], 'Lên cơ / Bước vào bàn thi đấu (hoặc Phá bi)'],
+      [['Space'], 'Giữ để tích lực & Thả để đánh bi khi lên cơ'],
+      [['F', 'Click'], 'Thách đấu Chọc cơ / Đấm cơ thủ đang lên cơ để cướp lượt!'],
+      [['R'], 'Xếp lại cụm bi 9-ball trên bàn (khi kết thúc ván)'],
       [['G'], 'Ăn mừng chiến thắng (Giương gậy cơ & pháo hoa)'],
       [['Enter'], 'Trò chuyện cùng anh em cơ thủ'],
       [['M'], 'Tắt / bật âm thanh tiếng bi va chạm'],
@@ -820,8 +891,10 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     emoteBtns,
     celebrate,
     tableActions,
-    breakBtn,
+    stepUpBtn,
     rackBtn,
+    aimHud,
+    challengeBanner,
     strikeHint,
     strikeTouch,
     breakTouch,
@@ -832,7 +905,57 @@ function buildHud(app, { onLeave, onBreakShot, onResetRack, onCameraToggle }) {
     addChat,
     card,
     toggleHelp,
-    setTableActionsVisible: (v) => tableActions.classList.toggle('show', v),
+    setTableActionsState({ visible, isNeedsBreak, isUnracked, isAimingMe, isAimingOther, shooterName }) {
+      if (isAimingMe) {
+        tableActions.classList.remove('show');
+        challengeBanner.classList.remove('show');
+        aimHud.classList.add('show');
+        return;
+      }
+      aimHud.classList.remove('show');
+
+      if (isAimingOther) {
+        tableActions.classList.remove('show');
+        challengeBanner.textContent = `🎯 ${shooterName || 'Cơ thủ'} đang lên cơ! Nhấn [F] để đấm cướp lượt!`;
+        challengeBanner.classList.add('show');
+        return;
+      }
+      challengeBanner.classList.remove('show');
+
+      if (!visible) {
+        tableActions.classList.remove('show');
+        return;
+      }
+
+      tableActions.classList.add('show');
+      if (isUnracked) {
+        stepUpBtn.style.display = 'none';
+        rackBtn.style.display = 'flex';
+      } else if (isNeedsBreak) {
+        stepUpBtn.style.display = 'flex';
+        stepUpBtn.childNodes[0].nodeValue = '💥 Vào Phá Bi ';
+        rackBtn.style.display = 'flex';
+      } else {
+        stepUpBtn.style.display = 'flex';
+        stepUpBtn.childNodes[0].nodeValue = '🎱 Lên Cơ Bắn ';
+        rackBtn.style.display = 'flex';
+      }
+    },
+    setTargetBall(ballNo) {
+      if (ballNo) {
+        const cfg = BALL_CONFIG[ballNo] || BALL_CONFIG[1];
+        targetBallCircle.style.background = cfg?.color || '#facc15';
+        targetBallText.textContent = `Mục tiêu: Bi số ${ballNo}`;
+      }
+    },
+    setTurnTimer(seconds) {
+      turnTimerText.textContent = `⏳ ${seconds}s`;
+    },
+    setPower(power) {
+      const pct = Math.round(power * 100);
+      powerBarFill.style.width = `${pct}%`;
+      powerValText.textContent = `${pct}%`;
+    },
     setMyHp(hp, ghost) {
       myHp.textContent = ghost ? '👻 Thần Cơ (Hồi sinh…)' : '❤'.repeat(hp) + '♡'.repeat(MAX_HP - hp);
       myHp.classList.toggle('low', !ghost && hp <= 2);
@@ -880,19 +1003,147 @@ export function mountCave(app, { profile, onLeave }) {
     hud.showToast(names[camMode]);
   }
 
+  let serverTableState = {
+    status: 'needs_break',
+    rackedById: null,
+    rackedByName: null,
+    shooterId: null,
+    shooterName: null,
+    turnSecondsLeft: 0,
+    targetBall: 1,
+    aim: { angle: 0, power: 0.5, spinX: 0, spinY: 0 },
+    balls: null,
+  };
+
+  let isAiming = false;
+  let chargingPower = false;
+  let powerDir = 1;
+  const localAim = {
+    angle: 0,
+    power: 0.5,
+    spinX: 0,
+    spinY: 0,
+  };
+  let hasSettledThisShot = true;
+  let lastAimBroadcast = 0;
+
+  function updateServerTable(newTable) {
+    if (!newTable) return;
+    serverTableState = { ...serverTableState, ...newTable };
+
+    if (serverTableState.targetBall) {
+      hud.setTargetBall(serverTableState.targetBall);
+    }
+    if (serverTableState.turnSecondsLeft != null) {
+      hud.setTurnTimer(serverTableState.turnSecondsLeft);
+    }
+
+    if (serverTableState.balls && Array.isArray(serverTableState.balls)) {
+      table.setBallPositions(serverTableState.balls);
+    }
+
+    // Check if I was just granted the turn
+    if (serverTableState.status === 'aiming' && serverTableState.shooterId === myId) {
+      if (!isAiming) {
+        startAiming();
+      }
+    } else if (serverTableState.shooterId !== myId) {
+      if (isAiming) {
+        stopAiming();
+      }
+      if (serverTableState.status === 'aiming' && serverTableState.aim) {
+        table.setAim({
+          angle: serverTableState.aim.angle,
+          power: serverTableState.aim.power,
+          spinOffset: { x: serverTableState.aim.spinX, y: serverTableState.aim.spinY },
+          visible: true,
+        });
+      } else {
+        table.setAim({ visible: false });
+      }
+    }
+  }
+
+  function startAiming() {
+    isAiming = true;
+    chargingPower = false;
+    localAim.power = 0.5;
+    hud.setPower(localAim.power);
+    hud.showToast('🎱 Lượt bắn của bạn! Kéo chuột để ngắm, giữ Space để tích lực');
+    audio.chalk();
+
+    // Default aim angle toward target ball
+    const lowest = serverTableState.targetBall || 1;
+    const cueBall = table.balls[0];
+    const targetObj = table.balls.find((b) => b.no === lowest && !b.pocketed) || table.balls[1];
+    if (cueBall && targetObj && Number.isFinite(targetObj.pos?.x) && Number.isFinite(cueBall.pos?.x)) {
+      const dz = (targetObj.pos.z ?? 0) - (cueBall.pos.z ?? 0);
+      const dx = (targetObj.pos.x ?? 0) - (cueBall.pos.x ?? 0);
+      const angle = Math.atan2(dz, dx);
+      localAim.angle = Number.isFinite(angle) ? angle : 0;
+    } else {
+      localAim.angle = 0;
+    }
+
+    table.setAim({
+      angle: localAim.angle,
+      power: localAim.power,
+      spinOffset: { x: localAim.spinX, y: localAim.spinY },
+      visible: true,
+    });
+  }
+
+  function stopAiming() {
+    isAiming = false;
+    chargingPower = false;
+    table.setAim({ visible: false });
+  }
+
+  function fireShot() {
+    if (!isAiming) return;
+    isAiming = false;
+    chargingPower = false;
+    hasSettledThisShot = false;
+
+    net.send({
+      t: 'table_shoot',
+      angle: localAim.angle,
+      power: localAim.power,
+      spinX: localAim.spinX,
+      spinY: localAim.spinY,
+    });
+
+    table.strikeShot(localAim.angle, localAim.power, { x: localAim.spinX, y: localAim.spinY });
+  }
+
   const hud = buildHud(app, {
     onLeave,
-    onBreakShot: () => {
-      table.breakShot(19, (Math.random() - 0.5) * 0.15);
-      net.send({ t: 'table_break', power: 19 });
-      hud.showToast('💥 Cú phá bi sấm sét của bạn!');
+    onStepUp: () => {
+      audio.unlock();
+      net.send({ t: 'table_step_up' });
     },
     onResetRack: () => {
-      table.resetRack();
-      net.send({ t: 'table_reset' });
-      hud.showToast('🔄 Đã xếp lại cụm bi 9-ball');
+      audio.unlock();
+      net.send({ t: 'table_rack' });
     },
     onCameraToggle: toggleCameraMode,
+    onShoot: fireShot,
+    onCancelAim: () => {
+      stopAiming();
+      hud.showToast('Bạn đã rời vị trí lên cơ');
+    },
+    onSpinChange: (sx, sy) => {
+      localAim.spinX = Number.isFinite(sx) ? sx : 0;
+      localAim.spinY = Number.isFinite(sy) ? sy : 0;
+      if (isAiming) {
+        table.setAim({
+          angle: localAim.angle,
+          power: localAim.power,
+          spinOffset: { x: localAim.spinX, y: localAim.spinY },
+          visible: true,
+        });
+      }
+    },
   });
 
   // --- Players --------------------------------------------------------------
@@ -1056,7 +1307,46 @@ export function mountCave(app, { profile, onLeave }) {
       updateCount();
       enterArena();
       maybeTutorial();
+      if (msg.table) updateServerTable(msg.table);
       hud.showToast('🌐 Đã kết nối Đấu Trường!');
+    },
+    toast(msg) {
+      hud.showToast(msg.text);
+    },
+    table_state(msg) {
+      updateServerTable(msg.table);
+    },
+    table_racked(msg) {
+      table.rackDiamond();
+      hud.showToast(`🔄 ${msg.name || 'Cơ thủ'} đã xếp lại cụm 9 bi!`);
+    },
+    table_aim(msg) {
+      if (msg.id !== myId) {
+        table.setAim({
+          angle: msg.aim.angle,
+          power: msg.aim.power,
+          spinOffset: { x: msg.aim.spinX, y: msg.aim.spinY },
+          visible: true,
+        });
+      }
+    },
+    table_shot_fired(msg) {
+      hasSettledThisShot = false;
+      table.strikeShot(msg.aim.angle, msg.aim.power, { x: msg.aim.spinX, y: msg.aim.spinY });
+      if (msg.by === myId) {
+        stopAiming();
+      }
+    },
+    table_forfeit(msg) {
+      if (msg.victim === myId) {
+        stopAiming();
+        hud.showToast('🥊 Bạn đã bị đấm gục và mất lượt bắn!');
+      }
+    },
+    table_game_over(msg) {
+      audio.cheer();
+      confetti.burst(new THREE.Vector3(0, 1.2, 0));
+      hud.showToast(`🎉🏆 ${msg.winnerName} đã ăn bi số 9 và kết thúc ván đấu!`);
     },
     join(msg) {
       addOther(msg.p);
@@ -1097,7 +1387,11 @@ export function mountCave(app, { profile, onLeave }) {
       avatarOf(msg.by)?.punch();
       avatarOf(msg.target)?.hit();
       setHealth(msg.target, msg.hp, msg.ghostLeft);
-      if (msg.target === myId && msg.ghostLeft > 0) {
+      if (msg.target === myId && isAiming && msg.ghostLeft > 0) {
+        stopAiming();
+        hud.showToast(`👻 Bạn bị ${nameOf(msg.by)} đấm gục và mất lượt cơ!`);
+        audio.cueHit(1);
+      } else if (msg.target === myId && msg.ghostLeft > 0) {
         hud.showToast(`👻 ${nameOf(msg.by)} đã hạ gục bạn, bạn biến thành Thần cơ!`);
         audio.cueHit(1);
       } else if (msg.target === myId) {
@@ -1217,9 +1511,14 @@ export function mountCave(app, { profile, onLeave }) {
   });
   hud.breakTouch.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    table.breakShot(19);
-    net.send({ t: 'table_break', power: 19 });
-    hud.showToast('💥 Phá bi thành công!');
+    if (isAiming) {
+      fireShot();
+    } else {
+      const r = Math.hypot(me.pos.x, me.pos.z);
+      if (r < TABLE_INTERACTION_RADIUS) {
+        net.send({ t: 'table_step_up' });
+      }
+    }
   });
 
   function onKeyDown(e) {
@@ -1240,19 +1539,45 @@ export function mountCave(app, { profile, onLeave }) {
     else if (k === 'h') hud.toggleHelp();
     else if (k === 'm') toggleMute();
     else if (k === 'c') toggleCameraMode();
-    else if (k === 'r') {
-      table.resetRack();
-      net.send({ t: 'table_reset' });
+    else if (k === 'e') {
+      const r = Math.hypot(me.pos.x, me.pos.z);
+      if (r < TABLE_INTERACTION_RADIUS) {
+        net.send({ t: 'table_step_up' });
+      }
+    } else if (k === 'r') {
+      const r = Math.hypot(me.pos.x, me.pos.z);
+      if (r < TABLE_INTERACTION_RADIUS) {
+        net.send({ t: 'table_rack' });
+      }
+    } else if (k === 'escape' || k === 'q') {
+      if (isAiming) {
+        stopAiming();
+        hud.showToast('Bạn đã rời vị trí lên cơ');
+      }
     } else if (e.code === 'Space') {
       e.preventDefault();
-      table.breakShot(19);
-      net.send({ t: 'table_break', power: 19 });
-      hud.showToast('💥 Cú phá bi sấm sét!');
+      if (isAiming) {
+        chargingPower = true;
+      } else {
+        const r = Math.hypot(me.pos.x, me.pos.z);
+        if (r < TABLE_INTERACTION_RADIUS && (serverTableState.status === 'ready_for_turn' || serverTableState.status === 'needs_break')) {
+          net.send({ t: 'table_step_up' });
+        }
+      }
     }
   }
 
-  const onKeyUp = (e) => keys.delete(e.code);
-  const onBlur = () => keys.clear();
+  const onKeyUp = (e) => {
+    keys.delete(e.code);
+    if (e.code === 'Space' && isAiming && chargingPower) {
+      chargingPower = false;
+      fireShot();
+    }
+  };
+  const onBlur = () => {
+    keys.clear();
+    chargingPower = false;
+  };
 
   canvas.addEventListener('pointerdown', (e) => {
     audio.unlock();
@@ -1268,6 +1593,18 @@ export function mountCave(app, { profile, onLeave }) {
   });
   canvas.addEventListener('pointerup', () => (dragging = false));
   canvas.addEventListener('pointermove', (e) => {
+    if (isAiming) {
+      if (Number.isFinite(e.movementX)) {
+        localAim.angle -= e.movementX * 0.0035;
+      }
+      table.setAim({
+        angle: localAim.angle,
+        power: localAim.power,
+        spinOffset: { x: localAim.spinX, y: localAim.spinY },
+        visible: true,
+      });
+      return;
+    }
     if (document.pointerLockElement !== canvas && !dragging) return;
     camYaw -= e.movementX * 0.0035;
     camPitch = THREE.MathUtils.clamp(camPitch + e.movementY * 0.0025, -0.15, 1.15);
@@ -1336,45 +1673,112 @@ export function mountCave(app, { profile, onLeave }) {
     last = now;
     t += dt;
 
-    // Move player relative to camera direction
-    const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - hud.joy.y;
-    const s = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) + hud.joy.x;
-    move.set(0, 0, 0);
+    // Handle active aiming or regular avatar locomotion
+    if (isAiming) {
+      // Rotate aim angle with A/D or Arrow keys
+      if (keys.has('KeyA') || keys.has('ArrowLeft')) {
+        localAim.angle -= dt * 1.6;
+        table.setAim({ angle: localAim.angle, power: localAim.power, spinOffset: { x: localAim.spinX, y: localAim.spinY }, visible: true });
+      }
+      if (keys.has('KeyD') || keys.has('ArrowRight')) {
+        localAim.angle += dt * 1.6;
+        table.setAim({ angle: localAim.angle, power: localAim.power, spinOffset: { x: localAim.spinX, y: localAim.spinY }, visible: true });
+      }
 
-    const amount = Math.min(1, Math.hypot(f, s));
-    if (amount > 0.15) {
-      const fwdX = -Math.sin(camYaw);
-      const fwdZ = -Math.cos(camYaw);
-      move.set(fwdX * f - fwdZ * s, 0, fwdZ * f + fwdX * s).normalize().multiplyScalar(WALK_SPEED * amount * dt);
-      const want = Math.atan2(move.x, move.z);
-      const diff = Math.atan2(Math.sin(want - me.ry), Math.cos(want - me.ry));
-      me.ry += diff * Math.min(1, dt * 12);
-    }
+      // Position shooter avatar at cue ball
+      const cueBall = table.balls[0];
+      if (cueBall && !cueBall.pocketed && Number.isFinite(cueBall.pos?.x) && Number.isFinite(cueBall.pos?.z)) {
+        const angle = Number.isFinite(localAim.angle) ? localAim.angle : 0;
+        me.pos.x = cueBall.pos.x - Math.cos(angle) * 0.95;
+        me.pos.z = cueBall.pos.z - Math.sin(angle) * 0.95;
+        me.ry = -angle + Math.PI / 2;
+      }
+      me.moving = false;
 
-    me.moving = move.lengthSq() > 0;
-    me.pos.add(move).addScaledVector(me.knock, dt);
-    me.knock.multiplyScalar(Math.max(0, 1 - dt * 6));
+      // Charge power while space is held down
+      if (chargingPower) {
+        localAim.power += dt * 0.85 * powerDir;
+        if (localAim.power >= 1.0) {
+          localAim.power = 1.0;
+          powerDir = -1;
+        } else if (localAim.power <= 0.08) {
+          localAim.power = 0.08;
+          powerDir = 1;
+        }
+        hud.setPower(localAim.power);
+        table.setAim({
+          angle: localAim.angle,
+          power: localAim.power,
+          spinOffset: { x: localAim.spinX, y: localAim.spinY },
+          visible: true,
+        });
+      }
 
-    // Arena perimeter boundary collision
-    const r = Math.hypot(me.pos.x, me.pos.z);
-    if (r > ARENA_RADIUS) me.pos.multiplyScalar(ARENA_RADIUS / r);
+      // Stream aim to other players (~10 times/sec)
+      if (now - lastAimBroadcast > 100) {
+        lastAimBroadcast = now;
+        net.send({
+          t: 'table_aim',
+          angle: localAim.angle,
+          power: localAim.power,
+          spinX: localAim.spinX,
+          spinY: localAim.spinY,
+        });
+      }
+    } else {
+      // Normal free locomotion relative to camera
+      const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - hud.joy.y;
+      const s = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) + hud.joy.x;
+      move.set(0, 0, 0);
 
-    // Central Rasson billiard table collision (rectangular bounds)
-    const tableHalfL = 2.4;
-    const tableHalfW = 1.4;
-    if (Math.abs(me.pos.x) < tableHalfL && Math.abs(me.pos.z) < tableHalfW) {
-      const overlapX = tableHalfL - Math.abs(me.pos.x);
-      const overlapZ = tableHalfW - Math.abs(me.pos.z);
-      if (overlapX < overlapZ) {
-        me.pos.x = (me.pos.x > 0 ? 1 : -1) * tableHalfL;
-      } else {
-        me.pos.z = (me.pos.z > 0 ? 1 : -1) * tableHalfW;
+      const amount = Math.min(1, Math.hypot(f, s));
+      if (amount > 0.15) {
+        const fwdX = -Math.sin(camYaw);
+        const fwdZ = -Math.cos(camYaw);
+        move.set(fwdX * f - fwdZ * s, 0, fwdZ * f + fwdX * s).normalize().multiplyScalar(WALK_SPEED * amount * dt);
+        const want = Math.atan2(move.x, move.z);
+        const diff = Math.atan2(Math.sin(want - me.ry), Math.cos(want - me.ry));
+        me.ry += diff * Math.min(1, dt * 12);
+      }
+
+      me.moving = move.lengthSq() > 0;
+      me.pos.add(move).addScaledVector(me.knock, dt);
+      me.knock.multiplyScalar(Math.max(0, 1 - dt * 6));
+
+      // Arena perimeter boundary collision
+      const r = Math.hypot(me.pos.x, me.pos.z);
+      if (r > ARENA_RADIUS) me.pos.multiplyScalar(ARENA_RADIUS / r);
+
+      // Central Rasson billiard table collision (rectangular bounds)
+      const tableHalfL = 2.4;
+      const tableHalfW = 1.4;
+      if (Math.abs(me.pos.x) < tableHalfL && Math.abs(me.pos.z) < tableHalfW) {
+        const overlapX = tableHalfL - Math.abs(me.pos.x);
+        const overlapZ = tableHalfW - Math.abs(me.pos.z);
+        if (overlapX < overlapZ) {
+          me.pos.x = (me.pos.x > 0 ? 1 : -1) * tableHalfL;
+        } else {
+          me.pos.z = (me.pos.z > 0 ? 1 : -1) * tableHalfW;
+        }
       }
     }
 
-    // Show table interaction controls when nearby
+    // Safety check against NaN
+    if (!Number.isFinite(me.pos.x) || !Number.isFinite(me.pos.z)) {
+      me.pos.set(0, 0, 3.5);
+    }
+
+    // Show contextual table interaction controls when nearby
+    const r = Math.hypot(me.pos.x, me.pos.z);
     const nearTable = r < TABLE_INTERACTION_RADIUS;
-    hud.setTableActionsVisible(nearTable);
+    hud.setTableActionsState({
+      visible: nearTable,
+      isNeedsBreak: serverTableState.status === 'needs_break',
+      isUnracked: serverTableState.status === 'unracked',
+      isAimingMe: isAiming,
+      isAimingOther: serverTableState.status === 'aiming' && serverTableState.shooterId !== myId,
+      shooterName: serverTableState.shooterName,
+    });
 
     me.avatar.root.position.x = me.pos.x;
     me.avatar.root.position.z = me.pos.z;
@@ -1414,7 +1818,26 @@ export function mountCave(app, { profile, onLeave }) {
     }
 
     // Camera configuration by mode
-    if (camMode === 0) {
+    if (isAiming) {
+      // Dedicated Pool Aiming Camera: Look down the cue stick toward target
+      const cueBall = table.balls[0];
+      const aimDist = 2.2;
+      const angle = Number.isFinite(localAim.angle) ? localAim.angle : 0;
+      const bx = cueBall && Number.isFinite(cueBall.pos?.x) ? cueBall.pos.x : 0;
+      const bz = cueBall && Number.isFinite(cueBall.pos?.z) ? cueBall.pos.z : 0;
+
+      camera.position.set(
+        bx - Math.cos(angle) * aimDist,
+        1.55,
+        bz - Math.sin(angle) * aimDist,
+      );
+      camTarget.set(
+        bx + Math.cos(angle) * 4,
+        BALL_Y,
+        bz + Math.sin(angle) * 4,
+      );
+      camera.lookAt(camTarget);
+    } else if (camMode === 0) {
       // 3rd Person Follow Camera
       camTarget.set(me.pos.x, 1.55, me.pos.z);
       camera.position.set(
@@ -1447,6 +1870,22 @@ export function mountCave(app, { profile, onLeave }) {
 
     // Update rolling billiard ball physics
     table.update(dt);
+
+    // Check when balls have completely stopped after a shot
+    if (!hasSettledThisShot && table.isAllStationary()) {
+      hasSettledThisShot = true;
+      if (serverTableState.shooterId === myId) {
+        const p = table.physics;
+        net.send({
+          t: 'table_settle',
+          potted: p.pottedThisShot,
+          scratch: p.scratch,
+          nineBallPotted: p.nineBallPotted,
+          firstContact: p.firstContact,
+          balls: table.getBallPositions(),
+        });
+      }
+    }
     torches.forEach((tc) => tc.update(t));
     confetti.update(dt);
 

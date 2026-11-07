@@ -10,7 +10,8 @@
     "dev": "concurrently -k -n server,web -c blue,green \"node --watch server/index.js --dev\" \"vite\"",
     "build": "vite build",
     "deploy": "vite build && touch dist/.nojekyll && gh-pages -d dist -t",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "test": "node --test test/billiards.test.js"
   },
   "dependencies": {
     "@fontsource/be-vietnam-pro": "^5.1.0",

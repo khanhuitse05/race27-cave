@@ -1,5 +1,21 @@
 import * as THREE from 'three';
 import { BALL_CONFIG, BRAND } from './config.js';
+import { createCueMesh } from './avatar.js';
+import {
+  BALL_RADIUS,
+  BALL_Y,
+  FELT_L,
+  FELT_W,
+  TABLE_H,
+  POCKET_LOCATIONS,
+} from './billiards/constants.js';
+import {
+  BilliardsPhysics,
+  BallState,
+  BallPosition,
+  buildDiamondRackPositions,
+} from './billiards/physics.js';
+import { getLowestActiveBall } from './billiards/nineball.js';
 
 /** Lightweight PRNG to keep deterministic geometry between reloads */
 export function rng(seed) {
@@ -275,28 +291,13 @@ export function createRassonBilliardsTable(audio = null) {
   group.add(lampGroup);
 
   // ---------------------------------------------------------------------------
-  // 9-Ball Set and Interactive Physics (Break & Shoot Simulation)
+  // Authentic 9-Ball Billiards Physics & Interactive 3D Simulation
   // ---------------------------------------------------------------------------
-  const BALL_RADIUS = 0.062;
-  const BALL_Y = TABLE_H + BALL_RADIUS;
   const balls = [];
   const ballMeshGroup = new THREE.Group();
   group.add(ballMeshGroup);
 
   const ballSphereGeo = new THREE.SphereGeometry(BALL_RADIUS, 24, 20);
-
-  // Diamond 9-Ball rack: Ball 1 at apex, Ball 9 at center
-  const rackPattern = [
-    { no: 1, row: 0, col: 0 },
-    { no: 2, row: 1, col: -0.5 },
-    { no: 3, row: 1, col: 0.5 },
-    { no: 4, row: 2, col: -1 },
-    { no: 9, row: 2, col: 0 }, // 9-ball at diamond center
-    { no: 5, row: 2, col: 1 },
-    { no: 6, row: 3, col: -0.5 },
-    { no: 7, row: 3, col: 0.5 },
-    { no: 8, row: 4, col: 0 },
-  ];
 
   function createBall(no, x, z) {
     const mat = new THREE.MeshStandardMaterial({
@@ -308,162 +309,220 @@ export function createRassonBilliardsTable(audio = null) {
     mesh.position.set(x, BALL_Y, z);
     mesh.castShadow = true;
     ballMeshGroup.add(mesh);
+
     return {
       no,
       mesh,
-      pos: new THREE.Vector2(x, z),
+      pos: new BallPosition(x, z),
       vel: new THREE.Vector2(0, 0),
+      rvel: new THREE.Vector3(0, 0, 0),
       pocketed: false,
+      state: BallState.STATIONARY,
     };
   }
 
-  // Cue ball positioned at the head string
-  let cueBall = createBall(0, -FELT_L * 0.28, 0);
-  balls.push(cueBall);
+  // Create balls 0 (cue ball) through 9 (9-ball)
+  const initialRack = buildDiamondRackPositions();
+  for (let i = 0; i <= 9; i++) {
+    const initPos = initialRack.get(i) || { x: 0, z: 0 };
+    balls.push(createBall(i, initPos.x, initPos.z));
+  }
 
-  // 9-ball cluster positioned at the foot spot
-  const rackOriginX = FELT_L * 0.24;
-  const colSpacing = BALL_RADIUS * 2.02;
-  const rowSpacing = BALL_RADIUS * 1.76;
+  const cueBall = balls[0];
 
-  rackPattern.forEach(({ no, row, col }) => {
-    const x = rackOriginX + row * rowSpacing;
-    const z = col * colSpacing;
-    balls.push(createBall(no, x, z));
+  // Initialize physics simulation engine
+  const physics = new BilliardsPhysics(audio);
+  physics.setBalls(balls);
+
+  // ---------------------------------------------------------------------------
+  // 3D Cue Stick, Aim Trajectory, and Target Ball Ring
+  // ---------------------------------------------------------------------------
+  const cueRoot = new THREE.Group();
+  const cueStick = createCueMesh('ngocmy');
+  cueStick.rotation.y = Math.PI;
+  cueRoot.add(cueStick);
+  group.add(cueRoot);
+  cueRoot.visible = false;
+
+  // Aim trajectory line
+  const aimLinePoints = [new THREE.Vector3(), new THREE.Vector3()];
+  const aimLineGeo = new THREE.BufferGeometry().setFromPoints(aimLinePoints);
+  const aimLineMat = new THREE.LineDashedMaterial({
+    color: '#38bdf8',
+    dashSize: 0.06,
+    gapSize: 0.04,
   });
+  const aimLine = new THREE.Line(aimLineGeo, aimLineMat);
+  group.add(aimLine);
+  aimLine.visible = false;
 
-  function resetRack() {
-    ballMeshGroup.clear();
-    balls.length = 0;
+  // Target ball highlight ring (highlights lowest numbered ball on table)
+  const targetRingGeo = new THREE.RingGeometry(BALL_RADIUS * 1.15, BALL_RADIUS * 1.45, 32);
+  const targetRingMat = new THREE.MeshBasicMaterial({
+    color: '#f59e0b',
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.85,
+  });
+  const targetRing = new THREE.Mesh(targetRingGeo, targetRingMat);
+  targetRing.rotation.x = -Math.PI / 2;
+  targetRing.position.y = TABLE_H + 0.003;
+  group.add(targetRing);
 
-    cueBall = createBall(0, -FELT_L * 0.28, 0);
-    balls.push(cueBall);
+  let cueAimAngle = 0;
+  let cuePower = 0.5;
+  let cueOffset = { x: 0, y: 0 };
+  let strokeAnim = 0;
 
-    rackPattern.forEach(({ no, row, col }) => {
-      const x = rackOriginX + row * rowSpacing;
-      const z = col * colSpacing;
-      balls.push(createBall(no, x, z));
-    });
+  function rackDiamond() {
+    const positions = buildDiamondRackPositions();
+    for (const b of balls) {
+      const p = positions.get(b.no);
+      if (p) {
+        b.pos.set(p.x, p.z);
+      }
+      b.vel.set(0, 0);
+      b.rvel.set(0, 0, 0);
+      b.pocketed = false;
+      b.state = BallState.STATIONARY;
+      b.mesh.visible = true;
+      b.mesh.position.set(b.pos.x, BALL_Y, b.pos.z);
+      b.mesh.rotation.set(0, 0, 0);
+    }
+    physics.resetEvents();
     audio?.chalk?.();
   }
 
-  /**
-   * Break Shot: Accelerates cue ball with high impulse into the 9-ball rack.
-   */
-  function breakShot(power = 18, angleJitter = 0) {
+  function setAim({ angle = 0, power = 0.5, spinOffset = { x: 0, y: 0 }, visible = true }) {
+    cueAimAngle = Number.isFinite(angle) ? angle : 0;
+    cuePower = Number.isFinite(power) ? power : 0.5;
+    cueOffset = spinOffset && typeof spinOffset === 'object' ? spinOffset : { x: 0, y: 0 };
+
+    if (!visible || cueBall.pocketed) {
+      cueRoot.visible = false;
+      aimLine.visible = false;
+      return;
+    }
+
+    cueRoot.visible = true;
+    aimLine.visible = true;
+
+    const bx = Number.isFinite(cueBall.pos?.x) ? cueBall.pos.x : 0;
+    const bz = Number.isFinite(cueBall.pos?.z) ? cueBall.pos.z : 0;
+
+    cueRoot.position.set(bx, BALL_Y, bz);
+    cueRoot.rotation.y = -cueAimAngle;
+
+    const pullBack = 0.08 + cuePower * 0.45;
+    const offX = Number.isFinite(cueOffset.x) ? cueOffset.x : 0;
+    const offY = Number.isFinite(cueOffset.y) ? cueOffset.y : 0;
+    cueStick.position.set(offX * BALL_RADIUS * 0.6, offY * BALL_RADIUS * 0.6, -pullBack);
+
+    const lineLen = 1.8;
+    const endX = bx + Math.cos(cueAimAngle) * lineLen;
+    const endZ = bz + Math.sin(cueAimAngle) * lineLen;
+    const posAttr = aimLine.geometry.attributes.position;
+    posAttr.setXYZ(0, bx, BALL_Y, bz);
+    posAttr.setXYZ(1, endX, BALL_Y, endZ);
+    posAttr.needsUpdate = true;
+    aimLine.computeLineDistances();
+  }
+
+  function strikeShot(angle = cueAimAngle, power = cuePower, spinOffset = cueOffset) {
     if (cueBall.pocketed) {
       cueBall.pos.set(-FELT_L * 0.28, 0);
       cueBall.pocketed = false;
       cueBall.mesh.visible = true;
+      cueBall.mesh.position.set(cueBall.pos.x, BALL_Y, cueBall.pos.z);
     }
-    const aim = new THREE.Vector2(rackOriginX - cueBall.pos.x, 0 + angleJitter).normalize();
-    cueBall.vel.copy(aim.multiplyScalar(power));
-    audio?.cueHit?.(1);
+
+    strokeAnim = 0.25;
+    physics.strikeCueBall(angle, power, spinOffset);
+    aimLine.visible = false;
   }
 
-  // Updates rolling physics, rail rebounds, collisions, and pocketing
-  const minX = -FELT_L / 2 + BALL_RADIUS + 0.03;
-  const maxX = FELT_L / 2 - BALL_RADIUS - 0.03;
-  const minZ = -FELT_W / 2 + BALL_RADIUS + 0.03;
-  const maxZ = FELT_W / 2 - BALL_RADIUS - 0.03;
+  function breakShot(power = 1.0, angleJitter = 0) {
+    if (cueBall.pocketed) {
+      cueBall.pos.set(-FELT_L * 0.28, 0);
+      cueBall.pocketed = false;
+      cueBall.mesh.visible = true;
+      cueBall.mesh.position.set(cueBall.pos.x, BALL_Y, cueBall.pos.z);
+    }
+    const rackOriginX = FELT_L * 0.24;
+    const bx = Number.isFinite(cueBall.pos?.x) ? cueBall.pos.x : -FELT_L * 0.28;
+    const angle = Math.atan2(0 + angleJitter, rackOriginX - bx);
+    strikeShot(angle, power, { x: 0, y: 0.1 });
+  }
+
+  function setBallPositions(ballDataList) {
+    if (!Array.isArray(ballDataList)) return;
+    for (const data of ballDataList) {
+      const b = balls.find((ball) => ball.no === data.no);
+      if (b && typeof data.x === 'number' && typeof data.z === 'number') {
+        b.pos.set(data.x, data.z);
+        b.pocketed = !!data.pocketed;
+        b.vel.set(0, 0);
+        b.rvel.set(0, 0, 0);
+        b.mesh.visible = !b.pocketed;
+        b.mesh.position.set(b.pos.x, BALL_Y, b.pos.z);
+      }
+    }
+  }
+
+  function getBallPositions() {
+    return balls.map((b) => ({
+      no: b.no,
+      x: +b.pos.x.toFixed(3),
+      z: +b.pos.z.toFixed(3),
+      pocketed: b.pocketed,
+    }));
+  }
 
   function updateBalls(dt) {
-    const friction = Math.exp(-dt * 1.35);
+    physics.update(dt);
 
-    // 1. Movement and cushion rail bounces
+    if (strokeAnim > 0) {
+      strokeAnim = Math.max(0, strokeAnim - dt);
+      const strokePush = Math.sin((1 - strokeAnim / 0.25) * Math.PI) * 0.12;
+      cueStick.position.z += strokePush;
+      if (strokeAnim === 0) cueRoot.visible = false;
+    }
+
     for (const b of balls) {
-      if (b.pocketed) continue;
-
-      b.pos.x += b.vel.x * dt;
-      b.pos.z += b.vel.y * dt;
-      b.vel.multiplyScalar(friction);
-
-      if (b.vel.lengthSq() < 0.0005) {
-        b.vel.set(0, 0);
-      }
-
-      // X cushion bounce
-      if (b.pos.x < minX) {
-        b.pos.x = minX;
-        b.vel.x *= -0.82;
-        if (Math.abs(b.vel.x) > 0.4) audio?.ballClick?.(0.5);
-      } else if (b.pos.x > maxX) {
-        b.pos.x = maxX;
-        b.vel.x *= -0.82;
-        if (Math.abs(b.vel.x) > 0.4) audio?.ballClick?.(0.5);
-      }
-
-      // Z cushion bounce
-      if (b.pos.z < minZ) {
-        b.pos.z = minZ;
-        b.vel.y *= -0.82;
-        if (Math.abs(b.vel.y) > 0.4) audio?.ballClick?.(0.5);
-      } else if (b.pos.z > maxZ) {
-        b.pos.z = maxZ;
-        b.vel.y *= -0.82;
-        if (Math.abs(b.vel.y) > 0.4) audio?.ballClick?.(0.5);
-      }
-
-      // Pocket entry detection across 6 pockets
-      for (const [px, _, pz] of pocketPositions) {
-        if (Math.hypot(b.pos.x - px, b.pos.z - pz) < 0.16) {
-          b.pocketed = true;
-          b.vel.set(0, 0);
+      if (b.pocketed) {
+        if (b.mesh.position.y > TABLE_H - 0.12) {
+          b.mesh.position.y -= dt * 1.8;
+        } else {
           b.mesh.visible = false;
-          audio?.pocketDrop?.();
-          break;
         }
+        continue;
       }
 
-      // Update 3D mesh position and rotational rolling
+      b.mesh.visible = true;
       b.mesh.position.x = b.pos.x;
+      b.mesh.position.y = BALL_Y;
       b.mesh.position.z = b.pos.z;
+
       const rollDist = b.vel.length() * dt;
-      if (rollDist > 0) {
+      if (rollDist > 0.0001) {
         const rollAxis = new THREE.Vector3(-b.vel.y, 0, b.vel.x).normalize();
         b.mesh.rotateOnWorldAxis(rollAxis, rollDist / BALL_RADIUS);
       }
     }
 
-    // 2. Ball-to-ball elastic collisions
-    const minDist = BALL_RADIUS * 2;
-    for (let i = 0; i < balls.length; i++) {
-      const b1 = balls[i];
-      if (b1.pocketed) continue;
-
-      for (let j = i + 1; j < balls.length; j++) {
-        const b2 = balls[j];
-        if (b2.pocketed) continue;
-
-        const dx = b2.pos.x - b1.pos.x;
-        const dz = b2.pos.z - b1.pos.z;
-        const dist = Math.hypot(dx, dz);
-
-        if (dist < minDist && dist > 0.0001) {
-          const nx = dx / dist;
-          const nz = dz / dist;
-
-          // Resolve overlap
-          const overlap = (minDist - dist) / 2;
-          b1.pos.x -= nx * overlap;
-          b1.pos.z -= nz * overlap;
-          b2.pos.x += nx * overlap;
-          b2.pos.z += nz * overlap;
-
-          // Velocity separation along collision normal
-          const kx = b1.vel.x - b2.vel.x;
-          const kz = b1.vel.y - b2.vel.y;
-          const p = 2 * (nx * kx + nz * kz) / 2;
-
-          b1.vel.x -= p * nx * 0.94;
-          b1.vel.y -= p * nz * 0.94;
-          b2.vel.x += p * nx * 0.94;
-          b2.vel.y += p * nz * 0.94;
-
-          const imp = Math.hypot(p * nx, p * nz);
-          if (imp > 0.3) audio?.ballClick?.(Math.min(1.2, imp / 5));
-        }
+    const lowest = getLowestActiveBall(balls);
+    if (lowest !== null) {
+      const targetBall = balls.find((b) => b.no === lowest);
+      if (targetBall && !targetBall.pocketed) {
+        targetRing.visible = true;
+        targetRing.position.x = targetBall.pos.x;
+        targetRing.position.z = targetBall.pos.z;
+        targetRing.rotation.z += dt * 1.5;
+      } else {
+        targetRing.visible = false;
       }
+    } else {
+      targetRing.visible = false;
     }
   }
 
@@ -471,8 +530,15 @@ export function createRassonBilliardsTable(audio = null) {
     group,
     tableLight,
     balls,
-    resetRack,
+    physics,
+    resetRack: rackDiamond,
+    rackDiamond,
     breakShot,
+    strikeShot,
+    setAim,
+    setBallPositions,
+    getBallPositions,
+    isAllStationary: () => physics.isAllStationary(),
     update: updateBalls,
   };
 }

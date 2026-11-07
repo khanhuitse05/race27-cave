@@ -106,7 +106,7 @@ function poloTexture(ballNumber = 8, poloColor = BRAND.jersey.body) {
 /**
  * Creates 3D professional billiard cue stick mesh.
  */
-function createCueMesh(styleId = 'carbon') {
+export function createCueMesh(styleId = 'carbon') {
   const cueGroup = new THREE.Group();
   const style = CUE_STYLES.find((s) => s.id === styleId) || CUE_STYLES[0];
 

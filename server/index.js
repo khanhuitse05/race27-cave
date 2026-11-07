@@ -32,6 +32,37 @@ const players = new Map();
 const chatLog = [];
 let nextId = 1;
 
+// Authoritative 9-Ball Table State
+const table = {
+  status: 'needs_break', // 'unracked' | 'needs_break' | 'ready_for_turn' | 'aiming' | 'shooting'
+  rackedById: null,
+  rackedByName: null,
+  shooterId: null,
+  shooterName: null,
+  turnDeadline: 0,
+  targetBall: 1,
+  aim: { angle: 0, power: 0.5, spinX: 0, spinY: 0 },
+  balls: null,
+};
+
+function publicTableState() {
+  return {
+    status: table.status,
+    rackedById: table.rackedById,
+    rackedByName: table.rackedByName,
+    shooterId: table.shooterId,
+    shooterName: table.shooterName,
+    turnSecondsLeft: table.turnDeadline ? Math.max(0, Math.ceil((table.turnDeadline - Date.now()) / 1000)) : 0,
+    targetBall: table.targetBall,
+    aim: table.aim,
+    balls: table.balls,
+  };
+}
+
+function broadcastTableState() {
+  broadcast({ t: 'table_state', table: publicTableState() });
+}
+
 function json(res, code, body) {
   res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(body));
@@ -145,6 +176,7 @@ wss.on('connection', (ws) => {
         id: me.id,
         players: [...players.values()].map(publicInfo),
         chat: chatLog,
+        table: publicTableState(),
       });
 
       broadcast({ t: 'join', p: publicInfo(me) }, me.id);
@@ -178,14 +210,151 @@ wss.on('connection', (ws) => {
         broadcast({ t: 'emote', id: me.id, emote });
         break;
       }
+      case 'table_rack': {
+        if (table.status !== 'unracked' && table.status !== 'ready_for_turn' && table.status !== 'needs_break') return;
+        if (me.ghostUntil) return;
+        if (Math.hypot(me.x, me.z) > 4.8) return;
+
+        table.status = 'needs_break';
+        table.rackedById = me.id;
+        table.rackedByName = me.name;
+        table.shooterId = null;
+        table.shooterName = null;
+        table.turnDeadline = 0;
+        table.targetBall = 1;
+        table.balls = null;
+
+        broadcast({ t: 'table_racked', by: me.id, name: me.name });
+        pushChat({ sys: true, text: `🔄 ${me.name} đã xếp lại cụm 9 bi! Chờ một cơ thủ khác bước vào phá bi!` });
+        broadcastTableState();
+        break;
+      }
+      case 'table_step_up': {
+        if (me.ghostUntil) return;
+        if (Math.hypot(me.x, me.z) > 4.8) return;
+
+        // If table needs break shot:
+        if (table.status === 'needs_break') {
+          // If multiple players are present, the person who racked cannot break
+          if (players.size > 1 && me.id === table.rackedById) {
+            send(ws, { t: 'toast', text: '⚠️ Bạn vừa xếp bi, hãy nhường cơ thủ khác phá bi!' });
+            return;
+          }
+          table.status = 'aiming';
+          table.shooterId = me.id;
+          table.shooterName = me.name;
+          table.turnDeadline = Date.now() + 35000;
+          pushChat({ sys: true, text: `💥 ${me.name} đã bước lên bàn chuẩn bị phá bi!` });
+          broadcastTableState();
+          break;
+        }
+
+        // If table is ready for next turn:
+        if (table.status === 'ready_for_turn') {
+          if (table.shooterId && table.shooterId !== me.id) return;
+          table.status = 'aiming';
+          table.shooterId = me.id;
+          table.shooterName = me.name;
+          table.turnDeadline = Date.now() + 35000;
+          pushChat({ sys: true, text: `🎱 ${me.name} đã lên cơ chuẩn bị thực hiện cú đánh!` });
+          broadcastTableState();
+          break;
+        }
+        break;
+      }
+      case 'table_aim': {
+        if (table.shooterId !== me.id || table.status !== 'aiming') return;
+        table.aim = {
+          angle: Number(msg.angle) || 0,
+          power: Number(msg.power) || 0.5,
+          spinX: Number(msg.spinX) || 0,
+          spinY: Number(msg.spinY) || 0,
+        };
+        broadcast({ t: 'table_aim', id: me.id, aim: table.aim }, me.id);
+        break;
+      }
+      case 'table_shoot': {
+        if (table.shooterId !== me.id || table.status !== 'aiming') return;
+        table.status = 'shooting';
+        table.turnDeadline = 0;
+        table.aim = {
+          angle: Number(msg.angle) || 0,
+          power: Number(msg.power) || 0.5,
+          spinX: Number(msg.spinX) || 0,
+          spinY: Number(msg.spinY) || 0,
+        };
+        broadcast({ t: 'table_shot_fired', by: me.id, aim: table.aim });
+        break;
+      }
+      case 'table_settle': {
+        if (table.shooterId !== me.id || table.status !== 'shooting') return;
+
+        const potted = Array.isArray(msg.potted) ? msg.potted : [];
+        const scratch = !!msg.scratch;
+        const nineBallPotted = !!msg.nineBallPotted;
+        const firstContact = typeof msg.firstContact === 'number' ? msg.firstContact : null;
+
+        const isFoul = scratch || firstContact === null || (table.targetBall !== null && firstContact !== table.targetBall);
+
+        // Update ball positions from client report
+        if (Array.isArray(msg.balls)) {
+          table.balls = msg.balls;
+          const remaining = msg.balls.filter((b) => b.no > 0 && !b.pocketed).map((b) => b.no);
+          table.targetBall = remaining.length > 0 ? Math.min(...remaining) : 1;
+        }
+
+        // Case 1: 9-Ball pocketed legally -> GAME OVER!
+        if (nineBallPotted && !isFoul) {
+          table.status = 'unracked';
+          table.shooterId = null;
+          table.shooterName = null;
+          table.rackedById = null;
+          broadcast({ t: 'table_game_over', winnerId: me.id, winnerName: me.name });
+          pushChat({ sys: true, text: `🎉🏆 CƠ THỦ ${me.name.toUpperCase()} ĐÃ XUẤT SẮC ĂN BI SỐ 9 VÀ KẾT THÚC VÁN ĐẤU!` });
+          pushChat({ sys: true, text: `🔄 Ván mới: Hãy tiến lại bàn để xếp bi 9-ball (R).` });
+          broadcastTableState();
+          break;
+        }
+
+        // Case 2: 9-ball pocketed on foul -> Respot 9-ball
+        if (nineBallPotted && isFoul) {
+          pushChat({ sys: true, text: `⚠️ Bi số 9 rơi lỗ do phạm quy! Bi số 9 được đặt lại vào điểm quy định.` });
+        }
+
+        // Case 3: Legal pot (and no 9-ball win) -> Shooter keeps turn!
+        const legalPots = !isFoul && potted.some((no) => no > 0);
+        if (legalPots) {
+          table.status = 'aiming';
+          table.turnDeadline = Date.now() + 35000;
+          pushChat({ sys: true, text: `🎯 ${me.name} ăn bi thành công! Tiếp tục giữ lượt bắn.` });
+          broadcastTableState();
+          break;
+        }
+
+        // Case 4: Miss or Foul -> Turn passes, table is open for anyone!
+        table.status = 'ready_for_turn';
+        table.shooterId = null;
+        table.shooterName = null;
+        table.turnDeadline = 0;
+
+        if (isFoul) {
+          if (scratch) {
+            pushChat({ sys: true, text: `⚠️ ${me.name} phạm quy rơi bi cái! Bàn mở tự do cho cơ thủ tiếp theo bước lên.` });
+          } else {
+            pushChat({ sys: true, text: `⚠️ ${me.name} phạm quy không trúng bi số ${table.targetBall}! Bàn mở tự do cho mọi người.` });
+          }
+        } else {
+          pushChat({ sys: true, text: `Lượt bắn kết thúc! Bàn mở tự do cho cơ thủ tiếp theo bước lên.` });
+        }
+        broadcastTableState();
+        break;
+      }
       case 'table_break': {
         broadcast({ t: 'table_break', by: me.id, power: msg.power || 19 }, me.id);
-        pushChat({ sys: true, text: `💥 ${me.name} vừa thực hiện cú phá bi dũng mãnh!` });
         break;
       }
       case 'table_reset': {
         broadcast({ t: 'table_reset', by: me.id }, me.id);
-        pushChat({ sys: true, text: `🔄 ${me.name} đã xếp lại cụm bi 9-ball.` });
         break;
       }
       case 'punch': {
@@ -203,7 +372,20 @@ wss.on('connection', (ws) => {
 
         broadcast({ t: 'punch', by: me.id, target: target.id, hp: target.hp, ghostLeft: ghostLeft(target) });
         pushChat({ sys: true, text: `🎯 ${me.name} đã thách đấu đường cơ với ${target.name}` });
-        if (target.ghostUntil) pushChat({ sys: true, text: `👻 ${target.name} đã hết máu và tạm chuyển sang trạng thái Thần cơ!` });
+
+        // Knockout check: If the victim is the active shooter, forfeit their turn!
+        if (target.ghostUntil && target.id === table.shooterId) {
+          table.status = 'ready_for_turn';
+          table.shooterId = null;
+          table.shooterName = null;
+          table.turnDeadline = 0;
+
+          broadcast({ t: 'table_forfeit', by: me.id, victim: target.id });
+          pushChat({ sys: true, text: `🥊 ${me.name} đã đấm gục ${target.name} và cướp quyền bắn bàn bida! Bàn hiện đang mở!` });
+          broadcastTableState();
+        } else if (target.ghostUntil) {
+          pushChat({ sys: true, text: `👻 ${target.name} đã hết máu và tạm chuyển sang trạng thái Thần cơ!` });
+        }
         break;
       }
       case 'celebrate':
@@ -216,12 +398,32 @@ wss.on('connection', (ws) => {
     if (!me) return;
     players.delete(me.id);
     broadcast({ t: 'leave', id: me.id });
+
+    // Release table if disconnecting player was active shooter
+    if (table.shooterId === me.id) {
+      table.status = 'ready_for_turn';
+      table.shooterId = null;
+      table.shooterName = null;
+      table.turnDeadline = 0;
+      broadcastTableState();
+    }
   });
 });
 
 setInterval(() => {
   if (players.size === 0) return;
   const now = Date.now();
+
+  // Check turn timer expiration for aiming shooter
+  if (table.status === 'aiming' && table.turnDeadline && now >= table.turnDeadline) {
+    const expiredShooter = table.shooterName;
+    table.status = 'ready_for_turn';
+    table.shooterId = null;
+    table.shooterName = null;
+    table.turnDeadline = 0;
+    pushChat({ sys: true, text: `⏳ Cơ thủ ${expiredShooter || 'Ẩn danh'} đã hết thời gian lên cơ. Bàn mở lại cho mọi người!` });
+    broadcastTableState();
+  }
   for (const p of players.values()) {
     if (p.ghostUntil && now >= p.ghostUntil) {
       p.ghostUntil = 0;
